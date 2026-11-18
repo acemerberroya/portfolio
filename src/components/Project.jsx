@@ -44,12 +44,26 @@ export default function Project() {
         <h3 className="live-title">More projects</h3>
         <div className="live-grid">
           {otherProjects.map((p) => (
-            <article key={p.name} className="card live-card">
-              <div className="live-preview">
-                {p.preview === 'restaurant' ? <RestaurantPreview /> : <LifecyclePreview host={p.host} />}
-              </div>
+            <article key={p.name} className={`card live-card ${p.url ? 'is-live' : ''}`}>
+              {p.url ? (
+                <a className="live-preview" href={p.url} target="_blank" rel="noopener noreferrer" tabIndex={-1} aria-hidden="true">
+                  <LifecyclePreview host={p.host} />
+                </a>
+              ) : (
+                <div className="live-preview">
+                  {p.preview === 'restaurant' ? <RestaurantPreview /> : <LifecyclePreview host={p.host} />}
+                </div>
+              )}
               <div className="live-body">
-                <h4>{p.name}</h4>
+                <div className="live-heading">
+                  <h4>{p.name}</h4>
+                  {p.url && (
+                    <span className="live-badge">
+                      <span className="live-dot" aria-hidden="true" />
+                      Live
+                    </span>
+                  )}
+                </div>
                 <p>{p.description}</p>
                 <ul className="tags" aria-label={p.tagsLabel}>
                   {p.tags.map((t) => (
@@ -57,7 +71,7 @@ export default function Project() {
                   ))}
                 </ul>
                 {p.url && (
-                  <a className="button button-ghost" href={p.url} target="_blank" rel="noopener noreferrer">
+                  <a className="button button-primary" href={p.url} target="_blank" rel="noopener noreferrer">
                     Visit {p.host}
                     <span className="visually-hidden"> (opens in a new tab)</span>
                   </a>

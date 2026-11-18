@@ -378,6 +378,27 @@ body { overflow: hidden; }
 .live-body .button { margin-top: auto; }
 .live-body h4 { font-size: var(--step-1); }
 .live-body p { margin-top: 8px; color: var(--ink-soft); max-width: 46ch; }
+.live-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.live-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: var(--step--1); font-weight: 700;
+}
+.live-dot {
+  position: relative; width: 8px; height: 8px; border-radius: 50%; background: #22a35a;
+}
+.live-dot::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; background: #22a35a;
+  animation: live-ping 1.8s ease-out infinite;
+}
+@keyframes live-ping { from { transform: scale(1); opacity: 0.6; } to { transform: scale(2.6); opacity: 0; } }
+.live-card.is-live {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 18px 40px -20px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.live-card.is-live .live-preview { display: block; border-radius: 12px; transition: transform 0.25s ease; }
+.live-card.is-live .live-preview:hover { transform: translateY(-2px); }
 .tags { list-style: none; margin: 14px 0 20px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .tags li {
   padding: 3px 10px; border-radius: 6px;
