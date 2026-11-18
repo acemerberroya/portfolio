@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acemer Berroya | Web Developer, Aspiring Cloud Engineer</title>
+    <meta
+      name="description"
+      content="Portfolio of Acemer Berroya, a freelance web developer and IT student from San Pedro City, Philippines, working toward a career in cloud and network engineering."
+    />
+    <meta name="author" content="Acemer Berroya" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Start the font download immediately, in parallel with the JavaScript -->
+    <link rel="preload" href="/fonts/schibsted-grotesk.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Open Graph / social preview -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Acemer Berroya | Web Developer, Aspiring Cloud Engineer" />
+    <meta
+      property="og:description"
+      content="Freelance web developer and BS Information Technology student at STI College Alabang, working toward a career in cloud and network engineering."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Acemer Berroya | Web Developer, Aspiring Cloud Engineer" />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <!--
+      Runs before first paint:
+      1. theme (light by default; dark only if the visitor chose it before)
+      2. whether the intro plays (once per session, not with reduced motion,
+         not when opening a specific slide such as /#contact)
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var t;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+
+        var seen = false;
+        try { seen = sessionStorage.getItem('introSeen') === '1'; } catch (e) {}
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var deep = location.hash && location.hash !== '#top';
+        if (!seen && !reduce && !deep) root.classList.add('intro-playing');
+      })();
+    </script>
+
+    <!--
+      Intro styles are inline so the intro paints on the very first frame,
+      before the app's JavaScript and CSS arrive. Everything animates with
+      transform and opacity only, which the browser runs off the main thread,
+      so it stays smooth while the app loads underneath.
+    -->
+    <style>
+      @font-face {
+        font-family: 'Schibsted Grotesk';
+        src: url('/fonts/schibsted-grotesk.woff2') format('woff2');
+        font-weight: 400 900;
+        font-display: swap;
+      }
+      #intro { display: none; }
+      .intro-playing, .intro-playing body { overflow: hidden; }
+      .intro-playing #intro {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        overflow: hidden;
+        cursor: pointer;
+        color: #eceef1;
+        font-family: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        background:
+          radial-gradient(circle at 1px 1px, #24272c 1.1px, transparent 1.3px) 0 0 / 32px 32px,
+          radial-gradient(ellipse at 50% 46%, #1b1d21 0%, #0b0c0e 72%);
+      }
+      #intro .l, #intro .p { position: absolute; display: block; }
+      #intro .l { background: #2c3036; }
+      #intro .h { height: 2px; width: calc(50vw - 74px); top: calc(46% + var(--o)); }
+      #intro .h.a { left: 0; transform-origin: 0 50%; }
+      #intro .h.b { right: 0; transform-origin: 100% 50%; }
+      #intro .v { width: 2px; left: calc(50% + var(--o)); }
+      #intro .v.a { top: 0; height: calc(46% - 74px); transform-origin: 50% 0; }
+      #intro .v.b { bottom: 0; height: calc(54% - 74px); transform-origin: 50% 100%; }
+      #intro .h.l { animation: i-grow-x 0.7s cubic-bezier(0.6, 0, 0.3, 1) var(--d) both; }
+      #intro .v.l { animation: i-grow-y 0.7s cubic-bezier(0.6, 0, 0.3, 1) var(--d) both; }
+      @keyframes i-grow-x { from { transform: scaleX(0); } }
+      @keyframes i-grow-y { from { transform: scaleY(0); } }
+
+      #intro .p {
+        width: 22px; height: 4px; margin: -1px 0 0 -11px; border-radius: 4px;
+        background: #7c9bff; box-shadow: 0 0 10px 2px rgba(124, 155, 255, 0.55);
+        opacity: 0;
+      }
+      #intro .p.amber { background: #f2b85c; box-shadow: 0 0 10px 2px rgba(242, 184, 92, 0.55); }
+      #intro .p.v { width: 4px; height: 22px; margin: -11px 0 0 -1px; }
+      #intro .p.h.a { left: 0; animation: i-run-r 0.75s ease-in calc(var(--d) + 0.45s) both; }
+      #intro .p.h.b { left: 100%; width: 22px; animation: i-run-l 0.75s ease-in calc(var(--d) + 0.45s) both; }
+      #intro .p.v.a { top: 0; animation: i-run-d 0.75s ease-in calc(var(--d) + 0.45s) both; }
+      #intro .p.v.b { top: 100%; height: 22px; animation: i-run-u 0.75s ease-in calc(var(--d) + 0.45s) both; }
+      @keyframes i-run-r { 0% { opacity: 1; transform: translateX(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(calc(50vw - 80px)); } }
+      @keyframes i-run-l { 0% { opacity: 1; transform: translateX(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(calc(-50vw + 80px)); } }
+      @keyframes i-run-d { 0% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(46vh - 80px)); } }
+      @keyframes i-run-u { 0% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateY(calc(-54vh + 80px)); } }
+
+      #intro .stage { position: absolute; inset: 0; transform-origin: 50% 46%; will-change: transform, opacity; }
+      #intro .glow {
+        position: absolute; left: 50%; top: 46%;
+        width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(242, 184, 92, 0.32) 0%, rgba(124, 155, 255, 0.08) 45%, rgba(124, 155, 255, 0) 70%);
+        animation: i-fade 0.9s ease-out 1.15s both;
+      }
+      #intro .node {
+        position: absolute; left: 50%; top: 46%;
+        width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: #eceef1; color: #0f1012;
+        font-size: 48px; font-weight: 800; letter-spacing: -2px;
+        z-index: 2;
+        animation: i-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 1.15s both;
+      }
+      #intro .node::before {
+        content: ''; position: absolute; inset: -16px; border-radius: 50%;
+        border: 3px dashed #f2b85c;
+      }
+      #intro .name, #intro .tag { position: absolute; left: 0; right: 0; margin: 0; text-align: center; white-space: nowrap; }
+      #intro .name {
+        top: calc(46% + 104px);
+        font-size: clamp(2rem, 1rem + 4.5vw, 4.4rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1;
+        animation: i-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.45s both;
+      }
+      #intro .tag {
+        top: calc(46% + 104px + clamp(2.6rem, 1.4rem + 5vw, 5.2rem));
+        font-size: clamp(1rem, 0.8rem + 0.8vw, 1.3rem); color: #9aa1ac;
+        animation: i-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.8s both;
+      }
+      #intro .name, #intro .tag { isolation: isolate; }
+      #intro .name::before {
+        content: ''; position: absolute; z-index: -1; left: 50%; top: 50%;
+        width: min(760px, 110vw); height: 340%; transform: translate(-50%, -38%);
+        background: radial-gradient(ellipse at center, rgba(11, 12, 14, 0.94) 32%, rgba(11, 12, 14, 0) 70%);
+        pointer-events: none;
+      }
+      @keyframes i-fade { from { opacity: 0; } }
+      @keyframes i-pop { from { opacity: 0; transform: scale(0.4); } }
+      @keyframes i-rise { from { opacity: 0; transform: translateY(16px); } }
+
+      #intro-skip {
+        position: absolute; right: clamp(12px, 3vw, 32px); bottom: clamp(12px, 3vw, 28px);
+        min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px;
+        background: transparent; color: rgba(236, 238, 241, 0.45);
+        font: 500 0.85rem 'Schibsted Grotesk', system-ui, sans-serif; cursor: pointer;
+      }
+      #intro-skip:hover, #intro-skip:focus-visible { color: rgba(236, 238, 241, 0.9); }
+      #intro-skip:focus-visible { outline: 2px solid rgba(242, 184, 92, 0.7); outline-offset: 2px; }
+
+      /* Exit: the stage pushes towards the viewer while the overlay fades */
+      #intro.out { animation: i-out 0.6s ease-in forwards; pointer-events: none; }
+      #intro.out .stage { animation: i-zoom 0.6s ease-in forwards; }
+      @keyframes i-out { to { opacity: 0; } }
+      @keyframes i-zoom { to { opacity: 0; transform: scale(4); } }
+
+      @media (max-width: 640px) {
+        #intro .node { width: 108px; height: 108px; margin: -54px 0 0 -54px; font-size: 40px; }
+        #intro .name { top: calc(46% + 90px); }
+        #intro .tag { top: calc(46% + 90px + 3rem); }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <p style="padding:2rem;font-family:sans-serif">
+        Acemer Berroya — web developer and aspiring cloud engineer.
+        Email <a href="mailto:acemerberroya1705@gmail.com">acemerberroya1705@gmail.com</a>
+        or call <a href="tel:+639308644747">0930-864-4747</a>.
+      </p>
+    </noscript>
+
+    <div id="intro">
+      <div aria-hidden="true">
+        <i class="l h a" style="--o:-56px;--d:0.05s"></i>
+        <i class="l h a" style="--o:0px;--d:0.16s"></i>
+        <i class="l h a" style="--o:46px;--d:0.27s"></i>
+        <i class="l h b" style="--o:-30px;--d:0.1s"></i>
+        <i class="l h b" style="--o:24px;--d:0.21s"></i>
+        <i class="l h b" style="--o:62px;--d:0.32s"></i>
+        <i class="l v a" style="--o:-40px;--d:0.08s"></i>
+        <i class="l v a" style="--o:32px;--d:0.24s"></i>
+        <i class="l v b" style="--o:-22px;--d:0.13s"></i>
+        <i class="l v b" style="--o:50px;--d:0.29s"></i>
+
+        <i class="p h a" style="top:calc(46% + 0px);--d:0.16s"></i>
+        <i class="p h a amber" style="top:calc(46% + 46px);--d:0.27s"></i>
+        <i class="p h b" style="top:calc(46% - 30px);--d:0.1s"></i>
+        <i class="p h b" style="top:calc(46% + 62px);--d:0.32s"></i>
+        <i class="p v a amber" style="left:calc(50% - 40px);--d:0.08s"></i>
+        <i class="p v b" style="left:calc(50% + 50px);--d:0.29s"></i>
+      </div>
+      <div class="stage" aria-hidden="true">
+        <div class="glow"></div>
+        <div class="node">AB</div>
+        <p class="name">Acemer Berroya</p>
+        <p class="tag">Web developer, aspiring cloud engineer</p>
+      </div>
+      <button type="button" id="intro-skip">Skip intro</button>
+    </div>
+
+    <div id="root"></div>
+
+    <!--
+      Ends the intro once it has played (about 2.7 s) and the app has rendered,
+      or straight away (once the app is ready) on Skip, a click or any key.
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var intro = document.getElementById('intro');
+        if (!root.classList.contains('intro-playing')) {
+          intro.parentNode.removeChild(intro);
+          return;
+        }
+        var played = false;
+        var ready = !!window.__appReady;
+        var ended = false;
+
+        function end() {
+          if (ended) return;
+          ended = true;
+          try { sessionStorage.setItem('introSeen', '1'); } catch (e) {}
+          intro.className = 'out';
+          root.classList.remove('intro-playing');
+          window.__introDone = true;
+          window.dispatchEvent(new Event('intro-done'));
+          setTimeout(function () {
+            if (intro.parentNode) intro.parentNode.removeChild(intro);
+          }, 650);
+        }
+        function check() { if (played && ready) end(); }
+        function skip() { played = true; check(); }
+
+        setTimeout(skip, 2700);
+        setTimeout(function () { ready = true; skip(); }, 8000); // safety net
+        window.addEventListener('app-ready', function () { ready = true; check(); });
+        intro.addEventListener('click', skip);
+        window.addEventListener('keydown', function onKey() {
+          window.removeEventListener('keydown', onKey);
+          skip();
+        });
+      })();
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
