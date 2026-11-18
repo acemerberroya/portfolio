@@ -12,7 +12,7 @@ export default function About() {
           ))}
         </div>
         <aside className="about-facts" aria-label="Quick facts">
-          <Avatar size={88} />
+          <Avatar size={120} />
           <dl className="facts">
             <div>
               <dt>Based in</dt>

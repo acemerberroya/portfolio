@@ -12,7 +12,7 @@ export const profile = {
   email: 'acemerberroya1705@gmail.com',
   // To use a real photo: put it in /public (e.g. /public/profile.jpg) and set
   // photo: '/profile.jpg'. Leave null to show the built-in SVG monogram.
-  photo: null,
+  photo: '/profile.jpg',
 };
 
 export const summary = [
