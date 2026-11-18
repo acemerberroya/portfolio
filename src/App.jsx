@@ -94,9 +94,6 @@ export default function App() {
             navigation above and the panel below.
           </p>
           <Panel section={section} go={go} focusHeading={focusHeading} />
-          <p className="scene-hint" aria-hidden="true">
-            {env.small ? 'Tap a beacon on the globe' : 'Drag the globe · click a beacon · ← → to move'}
-          </p>
         </>
       ) : (
         <PageView

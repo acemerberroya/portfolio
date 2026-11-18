@@ -25,7 +25,7 @@ function CopyButton({ value, label }) {
 
 export default function Contact(props) {
   return (
-    <Section id="contact" title="Contact" intro="Have a project or a role in mind? Reach me directly." {...props}>
+    <Section id="contact" title="Contact" intro="Got a project or an opening in mind? Get in touch." {...props}>
       <ul className="contact-cards">
         <Item id="contact-email" className="card contact-card">
           <span className="contact-kind">Email</span>

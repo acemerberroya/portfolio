@@ -16,7 +16,7 @@ export default function Skills(props) {
     <Section
       id="skills"
       title="Skills"
-      intro="My stack, drawn as a network with one subnet per category. Pick a grouping to highlight the services in it."
+      intro="My stack, laid out as a network with a subnet for each category. Choose a grouping to light up the skills inside it."
       {...props}
     >
       <div className="lens-bar" role="group" aria-label="Skill groupings">

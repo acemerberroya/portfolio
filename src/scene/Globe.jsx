@@ -249,17 +249,16 @@ export default function Globe({ lite, reduced, go }) {
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
     const s = st.current;
-    const top = getState().section === 'top';
     if (!s.drag) {
       if (s.tYaw != null) {
         const k = reduced ? 1 : damp(2.4, dt);
         s.yaw += angleDelta(s.yaw, s.tYaw) * k;
         s.pitch += (s.tPitch - s.pitch) * k;
-        if (top && Math.abs(angleDelta(s.yaw, s.tYaw)) < 0.003) s.tYaw = null; // home: settle, then idle spin
+        if (Math.abs(angleDelta(s.yaw, s.tYaw)) < 0.003) s.tYaw = null; // face the section, then keep spinning
       } else {
         s.yaw += s.vel * dt * (reduced ? 0 : 1);
         s.vel *= Math.exp(-2.5 * dt);
-        if (!reduced && top) s.yaw += 0.1 * dt;
+        if (!reduced) s.yaw += 0.14 * dt; // always spinning (paused only while dragging)
       }
     }
     if (spin.current) spin.current.rotation.set(s.pitch, s.yaw, 0);

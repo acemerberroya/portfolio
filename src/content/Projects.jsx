@@ -107,7 +107,7 @@ function ProjectCard({ p }) {
 
 export default function Projects(props) {
   return (
-    <Section id="project" title="Projects" intro="What I have built and what it delivered." {...props}>
+    <Section id="project" title="Projects" intro="Things I’ve built and the results they produced." {...props}>
       <div className="stack">
         {allProjects.map((p) => <ProjectCard key={p.name} p={p} />)}
       </div>
