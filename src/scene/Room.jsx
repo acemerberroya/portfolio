@@ -51,7 +51,7 @@ function glowTexture() {
 function Racks({ lite }) {
   const racks = useMemo(() => {
     const out = [];
-    const zs = lite ? [-6.5, -3.5] : [-7, -4.6, -2.2];
+    const zs = lite ? [-6] : [-7, -4];
     for (const side of [-1, 1]) for (const z of zs) out.push([side * (SIDE_X - 0.75), FLOOR_Y + 2.1, z]);
     return out;
   }, [lite]);
@@ -59,7 +59,7 @@ function Racks({ lite }) {
   const ledsGeo = useMemo(() => {
     const pos = [];
     const seed = [];
-    const perRack = lite ? 24 : 54;
+    const perRack = lite ? 18 : 36;
     racks.forEach(([x, , z]) => {
       for (let i = 0; i < perRack; i++) {
         const row = Math.floor(i / 6);
@@ -97,7 +97,7 @@ function Racks({ lite }) {
         args={[undefined, undefined, racks.length]}
       >
         <boxGeometry args={[1, 4.2, 1.5]} />
-        <meshStandardMaterial color="#0c1016" roughness={0.6} metalness={0.5} />
+        <meshLambertMaterial color="#0c1016" />
       </instancedMesh>
       <points geometry={ledsGeo} material={ledMat} />
     </>
@@ -109,7 +109,7 @@ export default function Room({ lite, reduced }) {
   const floorTex = useMemo(() => panelTexture({ base: '#141a22', seam: '#0a0e13', cols: 4, rows: 4, noise: 10, repeat: [6, 6] }), []);
   const glow = useMemo(glowTexture, []);
   const pillars = useMemo(() => {
-    const xs = lite ? [-8, -4, 4, 8] : [-9, -6, -3, 3, 6, 9];
+    const xs = lite ? [-8, 8] : [-9, -5, 5, 9];
     return xs;
   }, [lite]);
 
@@ -120,11 +120,10 @@ export default function Room({ lite, reduced }) {
 
       <ambientLight intensity={0.18} />
       <hemisphereLight args={['#6d8fb3', '#07090d', 0.6]} />
-      {/* Key light for the gold name, from above and in front */}
-      <directionalLight position={[3, 7, 6]} intensity={1.4} color="#fff1dc" />
+      {/* Soft key light from above and in front */}
+      <directionalLight position={[3, 7, 6]} intensity={0.8} color="#fff1dc" />
       {/* The hologram lights the room */}
       <pointLight position={[0, 0.35, 0]} color="#58d0ff" intensity={38} distance={18} decay={1.6} />
-      <pointLight position={[0, CEIL_Y - 0.6, -3]} color="#9cc8ff" intensity={8} distance={12} decay={1.8} />
 
       {/* Floor */}
       <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y, 0]}>
@@ -140,21 +139,21 @@ export default function Room({ lite, reduced }) {
       {/* Walls and ceiling */}
       <mesh position={[0, (FLOOR_Y + CEIL_Y) / 2, BACK_Z]}>
         <planeGeometry args={[SIDE_X * 2, CEIL_Y - FLOOR_Y]} />
-        <meshStandardMaterial map={wallTex} roughness={0.85} metalness={0.1} />
+        <meshLambertMaterial map={wallTex} />
       </mesh>
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * SIDE_X, (FLOOR_Y + CEIL_Y) / 2, 1]} rotation-y={-s * Math.PI / 2}>
           <planeGeometry args={[22, CEIL_Y - FLOOR_Y]} />
-          <meshStandardMaterial map={wallTex} roughness={0.85} metalness={0.1} />
+          <meshLambertMaterial map={wallTex} />
         </mesh>
       ))}
       <mesh position={[0, CEIL_Y, 1]} rotation-x={Math.PI / 2}>
         <planeGeometry args={[SIDE_X * 2, 22]} />
-        <meshStandardMaterial color="#0b0f14" roughness={0.95} />
+        <meshLambertMaterial color="#0b0f14" />
       </mesh>
       <mesh position={[0, (FLOOR_Y + CEIL_Y) / 2, 12]} rotation-y={Math.PI}>
         <planeGeometry args={[SIDE_X * 2, CEIL_Y - FLOOR_Y]} />
-        <meshStandardMaterial map={wallTex} roughness={0.9} />
+        <meshLambertMaterial map={wallTex} />
       </mesh>
 
       {/* Back-wall pillars with recessed light slits for depth */}
@@ -162,7 +161,7 @@ export default function Room({ lite, reduced }) {
         <group key={x} position={[x, (FLOOR_Y + CEIL_Y) / 2, BACK_Z + 0.35]}>
           <mesh>
             <boxGeometry args={[0.7, CEIL_Y - FLOOR_Y, 0.7]} />
-            <meshStandardMaterial color="#121820" roughness={0.7} metalness={0.3} />
+            <meshLambertMaterial color="#121820" />
           </mesh>
           <mesh position={[0.6, 0, -0.3]}>
             <planeGeometry args={[0.06, CEIL_Y - FLOOR_Y - 1.2]} />
@@ -194,15 +193,15 @@ export default function Room({ lite, reduced }) {
       {/* Projector pedestal */}
       <group position={[0, FLOOR_Y, 0]}>
         <mesh position={[0, 0.5, 0]}>
-          <cylinderGeometry args={[0.95, 1.25, 1, lite ? 32 : 64]} />
+          <cylinderGeometry args={[1.15, 1.45, 1, 32]} />
           <meshStandardMaterial color="#10161d" roughness={0.35} metalness={0.8} />
         </mesh>
         <mesh position={[0, 1.02, 0]} rotation-x={-Math.PI / 2}>
-          <ringGeometry args={[0.5, 0.58, lite ? 48 : 96]} />
+          <ringGeometry args={[0.6, 0.68, 64]} />
           <meshBasicMaterial color="#58d0ff" toneMapped={false} />
         </mesh>
         <mesh position={[0, 1.03, 0]} rotation-x={-Math.PI / 2}>
-          <circleGeometry args={[0.5, 48]} />
+          <circleGeometry args={[0.6, 32]} />
           <meshBasicMaterial color="#123548" />
         </mesh>
       </group>

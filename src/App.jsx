@@ -45,9 +45,12 @@ export default function App() {
     [use3D]
   );
 
-  // Initial section from the URL, and back/forward.
+  // Every visit opens on Home (an old #section link is cleared), then
+  // back/forward and edited hashes still work.
   useEffect(() => {
-    setState({ section: fromHash() });
+    setState({ section: 'top' });
+    if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+    window.scrollTo(0, 0);
     const onHash = () => setState((s) => ({ section: fromHash(), pulse: s.pulse + 1 }));
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);

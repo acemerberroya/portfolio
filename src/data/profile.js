@@ -151,7 +151,7 @@ export const projectDetails = {
     badge: 'Featured Capstone',
     issuer: 'STI College Alabang',
     date: '2025 – Present',
-    role: 'Lead Developer',
+    role: 'Developer',
     team: '5 developers',
     adviser: 'Manuel Jojo Simon Jr.',
     summary:
@@ -164,14 +164,13 @@ export const projectDetails = {
       problem:
         'Campus departments each handled their part of the student lifecycle separately. STI-360 brings admissions, guidance, front desk, marketing and student services into one portal.',
       features: [
-        { title: 'Architecture & team leadership', description: 'Set the system architecture, database design and coding standards; coordinate tasks, code reviews and version control on GitHub.' },
         { title: 'Role-based dashboards', description: 'Separate dashboards for Superuser, Admin, Front Desk, Guidance, Marketing, Students and exam takers.' },
         { title: 'Online exam portal', description: 'A dedicated login and dashboard for applicants taking the entrance exam.' },
         { title: 'Assessment analysis', description: 'Server-side analysis of assessment results through a Supabase Edge Function.' },
         { title: 'Records archive', description: 'An archive vault for keeping older records out of the active system.' },
       ],
       outcomes: [
-        'Led a team of 5 developers from architecture through deployment; live at sti-360.vercel.app.',
+        'Built by a team of 5 developers from architecture through deployment; live at sti-360.vercel.app.',
         'Brought 4 departments into one portal with 7 role-based dashboards: Superuser, Admin, Front Desk, Guidance, Marketing, Student and Exam Taker.',
       ],
     },
@@ -181,7 +180,7 @@ export const projectDetails = {
     badge: 'Freelance',
     client: 'Confidential',
     date: '2023 – 2024',
-    role: 'Developer (Freelance)',
+    role: 'Developer',
     summary:
       'A restaurant management system: menu and inventory, orders and billing, table reservations, sales dashboards, and an AI chatbot that answers customers.',
     techStack: [
@@ -218,7 +217,7 @@ export const addedProjects = [
     badge: 'Live',
     client: 'Sassy Strands',
     date: '2026',
-    role: 'Developer (Freelance)',
+    role: 'Developer',
     url: 'https://sassystrands.vercel.app',
     host: 'sassystrands.vercel.app',
     repoUrl: 'https://github.com/barceeee/sassystrands',
@@ -263,7 +262,7 @@ export const addedProjects = [
     name: 'Pagpag: The Hunger Games',
     title: 'Pagpag: The Hunger Games',
     badge: 'Playable',
-    role: 'Lead Developer',
+    role: 'Developer',
     demoUrl: '/demos/pagpag/',
     repoUrl: 'https://github.com/barceeee/PagpagTheHungerGames',
     image: '/projects/cover-pagpag.jpg',
@@ -308,7 +307,6 @@ export const hardSkills = [
 ];
 
 export const softSkills = [
-  { title: 'Leadership', evidence: 'Lead developer of a 5-person capstone team (STI-360)' },
   { title: 'Client Communication', evidence: "Turned two freelance clients' needs into working systems" },
   { title: 'Teamwork', evidence: 'Code reviews and GitHub workflow across the capstone team' },
   { title: 'Problem Solving', evidence: "Replaced a client's Excel workflow with one app" },

@@ -74,7 +74,7 @@ src/sections.js          section list, beacon positions, satellites per section
 src/data/profile.js      all content
 src/content/             one component per section (used by the panel and the page view)
 src/ui/                  Header (nav), Panel (overlay), PageView (fallback)
-src/scene/               Scene (canvas, camera rig), Room, Globe, NameRing, Satellites,
+src/scene/               Scene (canvas, camera rig), Room, Globe, Satellites,
                          shaders, geo helpers, landDots.json
 src/styles/global.css    all styles
 ```

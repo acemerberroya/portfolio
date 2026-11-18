@@ -6,13 +6,14 @@ import { satellitesFor } from '../sections.js';
 import { getState, setState, useStore } from '../store.js';
 import { AMBER, CYAN, GLOBE_R, angleDelta, damp } from './geo.js';
 
-const R = GLOBE_R * 1.55;
+const R = GLOBE_R * 1.32;
 const wp = new THREE.Vector3();
 const cp = new THREE.Vector3();
 
 function Satellite({ item, angle }) {
   const mesh = useRef();
   const label = useRef();
+  const last = useRef(-1);
   const lit = useStore((s) => s.focus === item.id || s.hover === item.id);
   const selected = useStore((s) => s.focus === item.id);
 
@@ -25,8 +26,12 @@ function Satellite({ item, angle }) {
     const s = (lit ? 1.6 : 1) * (0.7 + 0.3 * front);
     mesh.current.scale.setScalar(s);
     if (label.current) {
-      label.current.style.opacity = String(0.15 + 0.85 * front);
-      label.current.style.pointerEvents = front > 0.35 ? 'auto' : 'none';
+      const op = Math.round((0.15 + 0.85 * front) * 10) / 10;
+      if (op !== last.current) {
+        last.current = op;
+        label.current.style.opacity = String(op);
+        label.current.style.pointerEvents = front > 0.35 ? 'auto' : 'none';
+      }
     }
   });
 

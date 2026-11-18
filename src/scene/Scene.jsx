@@ -1,11 +1,10 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
+import { PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import Room from './Room.jsx';
 import Globe from './Globe.jsx';
 import Satellites from './Satellites.jsx';
-import NameRing from './NameRing.jsx';
 import { CYAN, GLOBE_Y, damp } from './geo.js';
 import { beamFragment, beamVertex } from './shaders.js';
 import { getState, subscribe } from '../store.js';
@@ -38,7 +37,10 @@ function Rig({ hub, reduced }) {
     const ppu = h / (2 * CAM.z * Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2)));
     const aw = w - Math.abs(inset.x);
     const ah = h - inset.y - header.current;
-    const ts = THREE.MathUtils.clamp(Math.min(aw / (6.8 * ppu), ah / (4.2 * ppu)), 0.36, 1);
+    // Fit the globe (about 4.4 units tall with its beacons) into the free space;
+    // with a section open, leave room for its orbiting satellites too.
+    const wide = getState().section === 'top' ? 5 : 6.6;
+    const ts = THREE.MathUtils.clamp(Math.min(aw / (wide * ppu), ah / (4.6 * ppu)), 0.4, 1);
     c.s += (ts - c.s) * k;
     if (hub.current) hub.current.scale.setScalar(c.s);
 
@@ -66,7 +68,7 @@ function Beam({ reduced, lite }) {
   const height = GLOBE_Y - bottom;
   return (
     <mesh position={[0, bottom + height / 2, 0]} material={mat}>
-      <cylinderGeometry args={[1.2, 0.55, height, lite ? 32 : 64, 1, true]} />
+      <cylinderGeometry args={[1.5, 0.55, height, 32, 1, true]} />
     </mesh>
   );
 }
@@ -85,42 +87,30 @@ export default function Scene({ env, go, onReady }) {
   const lite = env.tier === 'lite';
   const { reduced } = env;
   const hub = useRef();
-  const [dpr, setDpr] = useState(lite ? 1.25 : 1.75);
+  const [dpr, setDpr] = useState(lite ? 1 : 1.5);
 
   return (
     <Canvas
       className="scene-canvas"
       dpr={[1, dpr]}
       frameloop={reduced ? 'demand' : 'always'}
-      gl={{ antialias: true, alpha: false, stencil: false, powerPreference: lite ? 'default' : 'high-performance' }}
+      gl={{ antialias: !lite, alpha: false, stencil: false, powerPreference: 'high-performance' }}
       camera={{ fov: CAM.fov, position: [CAM.x, CAM.y, CAM.z], near: 0.1, far: 60 }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.05;
-        scene.environmentIntensity = 0.35;
         requestAnimationFrame(() => requestAnimationFrame(onReady));
       }}
     >
-      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(lite ? 1.25 : 1.75)} />
+      <PerformanceMonitor flipflops={2} onDecline={() => setDpr(1)} onFallback={() => setDpr(1)} />
       <Invalidator reduced={reduced} />
       <Rig hub={hub} reduced={reduced} />
       <Room lite={lite} reduced={reduced} />
       <group ref={hub} position={[0, GLOBE_Y, 0]}>
         <Globe lite={lite} reduced={reduced} go={go} />
         <Satellites reduced={reduced} />
-        <Suspense fallback={null}>
-          <NameRing lite={lite} reduced={reduced} />
-        </Suspense>
       </group>
       <Beam reduced={reduced} lite={lite} />
-      {!lite && (
-        <Environment resolution={128} frames={1}>
-          <Lightformer form="rect" intensity={3} color="#fff3dc" position={[0, 5, 3]} scale={[10, 2, 1]} rotation-x={Math.PI / 2} />
-          <Lightformer form="rect" intensity={2} color="#7fdcff" position={[-5, 1, 2]} scale={[2, 6, 1]} rotation-y={Math.PI / 2} />
-          <Lightformer form="rect" intensity={1.5} color="#ffd9a0" position={[5, 0, 2]} scale={[2, 6, 1]} rotation-y={-Math.PI / 2} />
-          <Lightformer form="ring" intensity={2} color="#5fd8ff" position={[0, 0, -4]} scale={3} />
-        </Environment>
-      )}
     </Canvas>
   );
 }

@@ -10,7 +10,7 @@
 
 :root {
   --bg: #05080d;
-  --panel: rgba(8, 13, 20, 0.92);
+  --panel: rgba(8, 13, 20, 0.95);
   --panel-solid: #0a1018;
   --card: rgba(255, 255, 255, 0.035);
   --line: rgba(140, 200, 240, 0.16);
@@ -63,8 +63,7 @@ ul, ol { margin: 0; padding: 0; }
 .site-header {
   position: fixed; inset: 0 0 auto 0; z-index: 20; height: var(--header-h);
   display: flex; align-items: center; gap: 16px; padding: 0 20px;
-  background: linear-gradient(rgba(5, 8, 13, 0.92), rgba(5, 8, 13, 0.6));
-  backdrop-filter: blur(10px);
+  background: linear-gradient(rgba(5, 8, 13, 0.96), rgba(5, 8, 13, 0.8));
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; text-decoration: none; white-space: nowrap; }
@@ -127,7 +126,6 @@ ul, ol { margin: 0; padding: 0; }
   position: fixed; z-index: 10; overflow-y: auto; overscroll-behavior: contain;
   background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(14px);
   scrollbar-width: thin; scrollbar-color: rgba(120, 200, 255, 0.3) transparent;
 }
 .panel-section { top: calc(var(--header-h) + 16px); right: 20px; bottom: 20px; width: min(560px, 44vw); }

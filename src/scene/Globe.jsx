@@ -91,6 +91,7 @@ function Beacon({ sec, st, go }) {
   const ring = useRef();
   const label = useRef();
   const tip = useRef();
+  const last = useRef(-1);
   const active = useStore((s) => s.section === sec.id);
   const hovered = useStore((s) => s.hoverSection === sec.id);
   const home = useStore((s) => s.section === 'top');
@@ -111,8 +112,13 @@ function Beacon({ sec, st, go }) {
     const facing = normal.dot(toCam);
     const visible = facing > 0.12;
     if (label.current) {
-      label.current.style.opacity = visible ? String(Math.min(1, (facing - 0.12) * 4)) : '0';
-      label.current.style.pointerEvents = visible ? 'auto' : 'none';
+      const op = visible ? Math.round(Math.min(1, (facing - 0.12) * 4) * 10) / 10 : 0;
+      if (op !== last.current) {
+        last.current = op;
+        label.current.style.opacity = String(op);
+        label.current.style.visibility = op === 0 ? 'hidden' : 'visible';
+        label.current.style.pointerEvents = visible ? 'auto' : 'none';
+      }
     }
     const t = state.clock.elapsedTime;
     if (ring.current) {
@@ -189,7 +195,7 @@ export default function Globe({ lite, reduced, go }) {
 
   const uniforms = useMemo(
     () => ({
-      uSize: { value: (lite ? 30 : 24) * Math.min(gl.getPixelRatio(), 2) },
+      uSize: { value: (lite ? 34 : 30) * Math.min(gl.getPixelRatio(), 2) },
       uScan: { value: 9 },
       uCenterY: { value: GLOBE_Y },
       uColor: { value: new THREE.Color(CYAN) },
@@ -284,7 +290,7 @@ export default function Globe({ lite, reduced, go }) {
           onPointerOver={() => { if (!st.current.drag) document.body.style.cursor = 'grab'; }}
           onPointerOut={() => { if (!st.current.drag) document.body.style.cursor = ''; }}
         >
-          <sphereGeometry args={[GLOBE_R * 1.01, 32, 32]} />
+          <sphereGeometry args={[GLOBE_R * 1.01, 24, 24]} />
           <meshBasicMaterial color="#0a3a57" transparent opacity={0.16} depthWrite={false} />
         </mesh>
         <LandDots lite={lite} uniforms={uniforms} />
@@ -292,10 +298,10 @@ export default function Globe({ lite, reduced, go }) {
         {SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
       </group>
       <mesh material={shell}>
-        <sphereGeometry args={[GLOBE_R * 1.015, lite ? 48 : 64, lite ? 48 : 64]} />
+        <sphereGeometry args={[GLOBE_R * 1.015, 48, 48]} />
       </mesh>
       <mesh material={halo}>
-        <sphereGeometry args={[GLOBE_R * 1.25, 48, 48]} />
+        <sphereGeometry args={[GLOBE_R * 1.2, 32, 32]} />
       </mesh>
       <group ref={rings}>
         <mesh rotation={[Math.PI / 2.2, 0.3, 0]}>

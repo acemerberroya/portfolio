@@ -1,8 +1,8 @@
 import { Vector3 } from 'three';
 
 const D = Math.PI / 180;
-export const GLOBE_R = 1.5;
-export const GLOBE_Y = 0.35;
+export const GLOBE_R = 1.95;
+export const GLOBE_Y = 0.25;
 export const CYAN = '#5fd8ff';
 export const AMBER = '#ffbf5a';
 
