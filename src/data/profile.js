@@ -292,16 +292,16 @@ export const addedProjects = [
 ];
 
 // Top 10 hard skills (portfolio-main/data/skills.json). Order = rank.
-// The two skills that only cited the NC II certificate keep their wording; the
-// certificate reference was removed, so they list no evidence.
+// Slots 6 and 7 are your AWS platform skills, worded from the original
+// summary, skill groups and awsServices above (which are unchanged).
 export const hardSkills = [
   { title: 'Full-Stack Web Development', description: 'Building complete web apps: interface, server logic and database.', shownIn: ['STI-360', 'Sassy Strands', 'Ball-Lalo'] },
   { title: 'Database Design & SQL', description: 'Designing schemas, writing migrations and indexing the joins an app relies on.', shownIn: ['Sassy Strands', 'STI-360'] },
   { title: 'Auth & Role-Based Access', description: 'Logins and per-role permissions enforced in the database with row-level security.', shownIn: ['Sassy Strands', 'STI-360'] },
   { title: 'Responsive UI Development', description: 'Interfaces that work on phones and desktops, built with React, Tailwind CSS, Bootstrap and plain CSS.', shownIn: ['STI-360', 'Sassy Strands', 'Ball-Lalo'] },
   { title: 'AI Chatbot Integration', description: "Connecting a business system to OpenAI's GPT-4o-mini so a chatbot answers customers' questions.", shownIn: ['Ball-Lalo'] },
-  { title: 'Computer Systems Servicing', description: 'Installing, configuring, maintaining and repairing computer systems.', shownIn: [] },
-  { title: 'Network & Server Setup', description: 'Setting up computer networks and servers.', shownIn: [] },
+  { title: 'Core AWS Services & Architecture', description: 'Working knowledge of the AWS platform and its core services, including S3, EC2, Lambda and RDS.', shownIn: [] },
+  { title: 'AWS S3, EC2, Lambda & RDS', description: 'Object storage (S3), virtual servers (EC2), serverless functions (Lambda) and managed relational databases (RDS).', shownIn: [] },
   { title: 'Cloud Deployment', description: 'Shipping apps to Vercel with Supabase as the hosted backend.', shownIn: ['STI-360', 'Sassy Strands', 'CommutePH'] },
   { title: 'Game Development', description: 'A 2D survival game in Unity and C#: game systems, saves, minigames and UI.', shownIn: ['Pagpag: The Hunger Games'] },
   { title: 'Version Control (Git)', description: 'Branches, pull requests and GitHub for every project.', shownIn: ['Sassy Strands', 'Pagpag: The Hunger Games', 'This portfolio'] },
