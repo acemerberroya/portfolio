@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { profile } from '../data/profile.js';
+import Item from './Item.jsx';
 import Section from './Section.jsx';
 
 function CopyButton({ value, label }) {
@@ -22,33 +23,36 @@ function CopyButton({ value, label }) {
   );
 }
 
-export default function Contact() {
+export default function Contact(props) {
   return (
-    <Section id="contact" title="Contact" intro="Have a project or a role in mind? Reach me directly.">
+    <Section id="contact" title="Contact" intro="Have a project or a role in mind? Reach me directly." {...props}>
       <ul className="contact-cards">
-        <li className="card contact-card">
+        <Item id="contact-email" className="card contact-card">
           <span className="contact-kind">Email</span>
           <a className="contact-value" href={`mailto:${profile.email}`}>{profile.email}</a>
           <CopyButton value={profile.email} label="email address" />
-        </li>
-        <li className="card contact-card">
+        </Item>
+        <Item id="contact-phone" className="card contact-card">
           <span className="contact-kind">Phone</span>
           <a className="contact-value" href={profile.phoneHref}>{profile.phone}</a>
           <CopyButton value={profile.phone} label="phone number" />
-        </li>
-        <li className="card contact-card">
+        </Item>
+        <Item id="contact-github" className="card contact-card">
           <span className="contact-kind">GitHub</span>
           <a className="contact-value" href={profile.githubHref} target="_blank" rel="noopener noreferrer">
-            {profile.github}
-            <span className="visually-hidden"> (opens in a new tab)</span>
+            {profile.github}<span className="visually-hidden"> (opens in a new tab)</span>
           </a>
           <CopyButton value={profile.githubHref} label="GitHub link" />
-        </li>
-        <li className="card contact-card">
+        </Item>
+        <Item id="contact-location" className="card contact-card">
           <span className="contact-kind">Location</span>
           <span className="contact-value">{profile.location}</span>
-        </li>
+        </Item>
       </ul>
+      <footer className="site-footer">
+        <p>© {new Date().getFullYear()} {profile.name}</p>
+        <p>Built with React, Three.js and Vite. Deployed on Vercel.</p>
+      </footer>
     </Section>
   );
 }

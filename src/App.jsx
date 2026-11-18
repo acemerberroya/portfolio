@@ -1,163 +1,106 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Header from './components/Header.jsx';
-import Hero from './components/Hero.jsx';
-import Kpis from './components/Kpis.jsx';
-import Project from './components/Project.jsx';
-import Experience from './components/Experience.jsx';
-import Skills from './components/Skills.jsx';
-import About from './components/About.jsx';
-import Education from './components/Education.jsx';
-import Contact from './components/Contact.jsx';
-import Footer from './components/Footer.jsx';
-import Filmstrip from './components/Filmstrip.jsx';
-import Reel from './components/Reel.jsx';
-import { FilmContext } from './film.js';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import Header from './ui/Header.jsx';
+import Panel from './ui/Panel.jsx';
+import PageView from './ui/PageView.jsx';
+import useEnv, { useRemembered } from './hooks/useEnv.js';
+import { ALL } from './sections.js';
+import { getState, setState, useStore } from './store.js';
 
-// Slide order puts the work first. These also become the nodes in the hero diagram.
-export const SECTIONS = [
-  { id: 'project', label: 'Projects', hint: '3 projects' },
-  { id: 'experience', label: 'Experience', hint: '2024 – now' },
-  { id: 'skills', label: 'Skills', hint: 'Stack map' },
-  { id: 'about', label: 'About', hint: 'Summary' },
-  { id: 'education', label: 'Education', hint: 'STI Alabang' },
-  { id: 'contact', label: 'Contact', hint: 'Say hello' },
-];
+// three.js and the scene load in their own chunk, after the content has painted.
+const Scene = lazy(() => import('./scene/Scene.jsx'));
 
-const SLIDE_IDS = ['top', ...SECTIONS.map((s) => s.id)];
-
-function indexFromHash() {
-  if (typeof window === 'undefined') return 0;
-  const i = SLIDE_IDS.indexOf(window.location.hash.replace('#', ''));
-  return i > 0 ? i : 0;
-}
-
-function setHash(i) {
-  if (history.replaceState) {
-    history.replaceState(null, '', i === 0 ? window.location.pathname : `#${SLIDE_IDS[i]}`);
-  }
-}
-
-// The intro lives in index.html so it can paint before this script loads.
-// It sets .intro-playing on <html> while it runs and fires 'intro-done' when it ends.
-function introPlaying() {
-  return typeof document !== 'undefined' && document.documentElement.classList.contains('intro-playing');
-}
+const IDS = ALL.map((s) => s.id);
+const fromHash = () => {
+  const h = window.location.hash.replace('#', '');
+  return IDS.includes(h) ? h : 'top';
+};
 
 function isTyping(el) {
-  if (!el) return false;
-  const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  const t = el?.tagName;
+  return t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT' || el?.isContentEditable;
 }
 
 export default function App() {
-  const [playing, setPlaying] = useState(introPlaying);
-  const [revealed, setRevealed] = useState(false);
-  const [index, setIndex] = useState(indexFromHash);
+  const env = useEnv();
+  const [mode, setMode] = useRemembered('view-mode', '3d');
+  const use3D = env.webgl && mode === '3d';
+  const section = useStore((s) => s.section);
+  const focusHeading = useRef(false);
+  const [sceneReady, setSceneReady] = useState(false);
 
-  const goTo = useCallback((target) => {
-    const i = typeof target === 'number' ? target : SLIDE_IDS.indexOf(target);
-    if (i < 0 || i >= SLIDE_IDS.length) return;
-    setIndex(i);
-    setHash(i);
-  }, []);
-
-  // Keyboard: arrows, Page Up/Down, Home/End (ignored while typing in the form).
-  useEffect(() => {
-    if (playing) return undefined;
-    const onKey = (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
-      const step = { ArrowRight: 1, PageDown: 1, ArrowLeft: -1, PageUp: -1 }[e.key];
-      if (step) {
-        e.preventDefault();
-        setIndex((i) => {
-          const next = Math.min(SLIDE_IDS.length - 1, Math.max(0, i + step));
-          setHash(next);
-          return next;
-        });
-      } else if (e.key === 'Home' || e.key === 'End') {
-        e.preventDefault();
-        goTo(e.key === 'Home' ? 0 : SLIDE_IDS.length - 1);
+  // Navigate to a section (and optionally select one item in it).
+  const go = useCallback(
+    (id, focus = null, { fromKeyboard = true } = {}) => {
+      if (!IDS.includes(id)) return;
+      focusHeading.current = fromKeyboard;
+      setState((s) => ({ section: id, focus, hover: null, pulse: s.pulse + 1 }));
+      history.replaceState(null, '', id === 'top' ? window.location.pathname : `#${id}`);
+      if (!use3D) {
+        const el = id === 'top' ? document.getElementById('top') : document.getElementById(`sec-${id}`);
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        el?.querySelector('h1, h2')?.focus({ preventScroll: true });
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [playing, goTo]);
+    },
+    [use3D]
+  );
 
-  // Back/forward or an edited hash.
+  // Initial section from the URL, and back/forward.
   useEffect(() => {
-    const onHash = () => setIndex(indexFromHash());
+    setState({ section: fromHash() });
+    const onHash = () => setState((s) => ({ section: fromHash(), pulse: s.pulse + 1 }));
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // When switching to page view, land on the section that was open.
   useEffect(() => {
-    if (!playing) return undefined;
-    const done = () => {
-      setPlaying(false);
-      setRevealed(true);
+    if (use3D) return;
+    const id = getState().section;
+    if (id !== 'top') requestAnimationFrame(() => document.getElementById(`sec-${id}`)?.scrollIntoView());
+  }, [use3D]);
+
+  // Keyboard: ← → move between sections, Esc goes home (3D view only).
+  useEffect(() => {
+    if (!use3D) return undefined;
+    const onKey = (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
+      const i = IDS.indexOf(getState().section);
+      if (e.key === 'ArrowRight' && i < IDS.length - 1) { e.preventDefault(); go(IDS[i + 1]); }
+      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); go(IDS[i - 1]); }
+      else if (e.key === 'Escape' && i > 0) { e.preventDefault(); go('top'); }
     };
-    if (window.__introDone) done();
-    window.addEventListener('intro-done', done);
-    return () => window.removeEventListener('intro-done', done);
-  }, [playing]);
-
-  const frames = useMemo(
-    () => [
-      {
-        id: 'top',
-        label: 'Home',
-        node: (
-          <>
-            <Hero sections={SECTIONS} />
-            <Kpis />
-          </>
-        ),
-      },
-      { id: 'project', label: 'Projects', node: <Project /> },
-      { id: 'experience', label: 'Experience', node: <Experience /> },
-      { id: 'skills', label: 'Skills', node: <Skills /> },
-      { id: 'about', label: 'About', node: <About /> },
-      { id: 'education', label: 'Education', node: <Education /> },
-      {
-        id: 'contact',
-        label: 'Contact',
-        node: (
-          <>
-            <Contact />
-            <Footer />
-          </>
-        ),
-      },
-    ],
-    []
-  );
-
-  const film = useMemo(() => ({ index, frames, goTo }), [index, frames, goTo]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [use3D, go]);
 
   return (
-    <FilmContext.Provider value={film}>
-      {/* key remounts the page once the intro ends, so the hero diagram draws in on reveal */}
-      <div
-        className={`site ${revealed ? 'site-reveal' : ''}`}
-        key={revealed ? 'after' : 'before'}
-        aria-hidden={playing || undefined}
-      >
-        <a
-          className="skip-link"
-          href="#main"
-          onClick={(e) => {
-            e.preventDefault();
-            document.querySelector('.slide.is-active h1, .slide.is-active h2')?.focus();
-          }}
-        >
-          Skip to content
-        </a>
-        <Header />
-        <main id="main" className="site-main">
-          <Filmstrip frames={frames} index={index} goTo={goTo} />
-        </main>
-        <Reel />
-      </div>
-    </FilmContext.Provider>
+    <div className={`app ${use3D ? 'is-3d' : 'is-page'} ${sceneReady ? 'scene-ready' : ''}`}>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <Header section={section} go={go} mode={mode} setMode={setMode} webgl={env.webgl} />
+      {use3D ? (
+        <>
+          <div className="stage" aria-hidden="true">
+            <div className="stage-fallback" />
+            <Suspense fallback={null}>
+              <Scene env={env} go={go} onReady={() => setSceneReady(true)} />
+            </Suspense>
+          </div>
+          <p className="visually-hidden">
+            The background is an interactive holographic globe. Every section is also available from the
+            navigation above and the panel below.
+          </p>
+          <Panel section={section} go={go} focusHeading={focusHeading} />
+          <p className="scene-hint" aria-hidden="true">
+            {env.small ? 'Tap a beacon on the globe' : 'Drag the globe · click a beacon · ← → to move'}
+          </p>
+        </>
+      ) : (
+        <PageView
+          go={go}
+          note={env.webgl ? null : 'Your browser can’t show the 3D version, so here is the full portfolio as a page.'}
+        />
+      )}
+    </div>
   );
 }
