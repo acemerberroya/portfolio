@@ -10,6 +10,10 @@ export const profile = {
   github: 'github.com/acemerberroya',
   githubHref: 'https://github.com/acemerberroya',
   email: 'acemerberroya1705@gmail.com',
+  // Opens Gmail's compose window with this address as the recipient.
+  gmailCompose:
+    'https://mail.google.com/mail/?view=cm&fs=1&to=acemerberroya1705@gmail.com&su=' +
+    encodeURIComponent('Portfolio inquiry'),
   // To use a real photo: put it in /public (e.g. /public/profile.jpg) and set
   // photo: '/profile.jpg'. Leave null to show the built-in SVG monogram.
   photo: '/profile.jpg',

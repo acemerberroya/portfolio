@@ -17,8 +17,9 @@ export default function Hero({ sections }) {
             Freelance web developer since 2024, based in {profile.location}.
           </p>
           <div className="hero-actions">
-            <a className="button button-primary" href={`mailto:${profile.email}`}>
+            <a className="button button-primary" href={profile.gmailCompose} target="_blank" rel="noopener noreferrer">
               Email me
+              <span className="visually-hidden"> (opens Gmail in a new tab)</span>
             </a>
             <a
               className="button button-ghost"
