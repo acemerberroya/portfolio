@@ -112,13 +112,13 @@ export const otherProjects = [
     url: 'https://sti-360.vercel.app/',
     host: 'sti-360.vercel.app',
     description:
-      'Our thesis: a student lifecycle system for STI College Alabang that follows students from enrollment to employment.',
+      'Thesis project: an enrollment-to-employment student lifecycle system for STI College Alabang.',
     tagsLabel: 'Built with',
     tags: ['Supabase', 'Vercel'],
     preview: 'lifecycle',
     // Screenshot of the live landing page (public/projects/sti-360.jpg)
     image: '/projects/sti-360.jpg',
-    imageAlt: 'Screenshot of the STI-ALABANG 360 landing page',
+    imageAlt: 'STI-ALABANG 360 landing page: One portal for smarter campus management',
   },
 ];
 
@@ -137,9 +137,10 @@ export const certificates = [
 
 // ---------------------------------------------------------------------------
 // Added for the 3D portfolio: projects and skills from the shared portfolio-main
-// repository, rewritten in new wording (facts unchanged). Above this line, the
-// sentences were also reworded, except the AWS entries, which are exactly as
-// originally written. The TESDA CSS NC II certificate is not included.
+// repository, rewritten in new wording (facts unchanged). Not reworded anywhere:
+// the AWS entries and the whole STI-ALABANG 360 entry keep their original wording
+// (STI-360 only has its role set to Developer). The TESDA CSS NC II certificate
+// is not included.
 // ---------------------------------------------------------------------------
 
 // Extra detail for the two projects already listed in `otherProjects`,
@@ -155,23 +156,23 @@ export const projectDetails = {
     team: '5 developers',
     adviser: 'Manuel Jojo Simon Jr.',
     summary:
-      'One dashboard that links every campus department and follows each student from admission all the way to their career.',
+      'A campus management portal that connects every department in one dashboard for the full student lifecycle, from admissions to career success.',
     techStack: [
       'React', 'Vite', 'Tailwind CSS', 'Supabase', 'PostgreSQL', 'Edge Functions',
       'Leaflet', 'Recharts', 'Tesseract.js', 'PDF.js',
     ],
     caseStudy: {
       problem:
-        'Every campus office used to manage its own slice of a student’s journey on its own. STI-360 puts admissions, guidance, the front desk, marketing and student services in a single portal.',
+        'Campus departments each handled their part of the student lifecycle separately. STI-360 brings admissions, guidance, front desk, marketing and student services into one portal.',
       features: [
-        { title: 'A dashboard for every role', description: 'Superusers, admins, front desk staff, guidance, marketing, students and exam takers each get their own view.' },
-        { title: 'Entrance exam portal', description: 'Applicants sign in to their own dashboard and take the entrance exam online.' },
-        { title: 'Assessment insights', description: 'A Supabase Edge Function analyzes assessment results on the server.' },
-        { title: 'Archive vault', description: 'Older records move into an archive so the live system stays lean.' },
+        { title: 'Role-based dashboards', description: 'Separate dashboards for Superuser, Admin, Front Desk, Guidance, Marketing, Students and exam takers.' },
+        { title: 'Online exam portal', description: 'A dedicated login and dashboard for applicants taking the entrance exam.' },
+        { title: 'Assessment analysis', description: 'Server-side analysis of assessment results through a Supabase Edge Function.' },
+        { title: 'Records archive', description: 'An archive vault for keeping older records out of the active system.' },
       ],
       outcomes: [
-        'Taken from architecture to deployment by a five-developer team, and now live at sti-360.vercel.app.',
-        'Unites 4 departments in one portal with 7 dashboards tailored to each role: Superuser, Admin, Front Desk, Guidance, Marketing, Student and Exam Taker.',
+        'Built by a team of 5 developers from architecture through deployment; live at sti-360.vercel.app.',
+        'Brought 4 departments into one portal with 7 role-based dashboards: Superuser, Admin, Front Desk, Guidance, Marketing, Student and Exam Taker.',
       ],
     },
   },
