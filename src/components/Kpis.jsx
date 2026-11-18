@@ -8,7 +8,7 @@ const KPIS = [
   { label: 'Freelancing since', value: '2024', note: 'Websites, inventory systems and database apps', target: 'experience' },
   { label: 'Manual inventory errors', value: '−40%', note: 'Smart Inventory Management System', target: 'project', accent: true },
   { label: 'Skills across 3 areas', value: String(skillCount), note: 'Languages, frameworks, cloud and databases', target: 'skills' },
-  { label: 'Projects', value: String(projectCount), note: 'Inventory, restaurant and student lifecycle systems', target: 'project' },
+  { label: 'Projects', value: String(projectCount), note: 'Student lifecycle, inventory and restaurant systems', target: 'project' },
 ];
 
 export default function Kpis() {

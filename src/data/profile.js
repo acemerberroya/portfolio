@@ -112,6 +112,9 @@ export const otherProjects = [
     tagsLabel: 'Built with',
     tags: ['Supabase', 'Vercel'],
     preview: 'lifecycle',
+    // Screenshot of the live landing page (public/projects/sti-360.jpg)
+    image: '/projects/sti-360.jpg',
+    imageAlt: 'STI-ALABANG 360 landing page: One portal for smarter campus management',
   },
 ];
 
