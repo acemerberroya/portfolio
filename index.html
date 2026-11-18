@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,7 +9,7 @@
       content="Portfolio of Acemer Berroya, a freelance web developer and IT student from San Pedro City, Philippines, working toward a career in cloud and network engineering."
     />
     <meta name="author" content="Acemer Berroya" />
-    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="theme-color" content="#0F1012" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Start the font download immediately, in parallel with the JavaScript -->
@@ -31,7 +31,7 @@
 
     <!--
       Runs before first paint:
-      1. theme (light by default; dark only if the visitor chose it before)
+      1. theme (dark by default; light only if the visitor chose it before)
       2. whether the intro plays (once per session, not with reduced motion,
          not when opening a specific slide such as /#contact)
     -->
@@ -40,7 +40,7 @@
         var root = document.documentElement;
         var t;
         try { t = localStorage.getItem('theme'); } catch (e) {}
-        root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+        root.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
 
         var seen = false;
         try { seen = sessionStorage.getItem('introSeen') === '1'; } catch (e) {}

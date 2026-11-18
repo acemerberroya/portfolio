@@ -70,7 +70,7 @@ src/styles/global.css      design tokens (light/dark) and all styles
 
 ## Accessibility notes
 
-- The site opens in light mode; visitors can switch to dark mode in the header, and the choice is remembered.
+- The site opens in dark mode; visitors can switch to light mode in the header, and the choice is remembered.
 - With `prefers-reduced-motion`, intro animations and packet effects are skipped and scrolling jumps instead of gliding.
 - Navigation: Left/Right arrows, Page Up/Down, Home/End, swipe on touch screens, or the controls at the bottom. Each slide has its own link (e.g. `/#contact`).
 - Keyboard: skip link, visible focus on every control, diagram nodes are real links, copy buttons announce when something is copied.
