@@ -129,11 +129,33 @@ function Beacon({ sec, st, go }) {
     if (tip.current) tip.current.scale.setScalar(hovered || active ? 1.5 : 1);
   });
 
-  const enter = () => { setState({ hoverSection: sec.id }); document.body.style.cursor = 'pointer'; };
-  const leave = () => { setState((s) => (s.hoverSection === sec.id ? { hoverSection: null } : {})); document.body.style.cursor = ''; };
+  // The pin's 3D hit area and its label share one hover state. Leaving waits a
+  // moment, so moving between them (or a tiny jitter) doesn't flicker.
+  const timer = useRef();
+  const clicked = useRef(false); // after a click, let the globe turn even though the cursor is still here
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const enter = (e) => {
+    e?.stopPropagation?.();
+    clearTimeout(timer.current);
+    const s = getState();
+    const pin = clicked.current ? null : sec.id;
+    if (s.hoverSection !== sec.id || s.pinHover !== pin) setState({ hoverSection: sec.id, pinHover: pin });
+    document.body.style.cursor = 'pointer';
+  };
+  const leave = (e) => {
+    e?.stopPropagation?.();
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      clicked.current = false;
+      setState((s) => (s.hoverSection === sec.id ? { hoverSection: null, pinHover: null } : {}));
+      if (!st.current.drag) document.body.style.cursor = '';
+    }, 140);
+  };
   const pick = (e) => {
     e?.stopPropagation?.();
     if (st.current.moved > 6) return;
+    clicked.current = true;
+    setState({ pinHover: null });
     go(sec.id, null, { fromKeyboard: false });
   };
 
@@ -249,7 +271,9 @@ export default function Globe({ lite, reduced, go }) {
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
     const s = st.current;
-    if (!s.drag) {
+    const g = getState();
+    const frozen = g.pinHover || (g.hover && g.hoverFrom === 'scene');
+    if (!s.drag && !frozen) {
       if (s.tYaw != null) {
         const k = reduced ? 1 : damp(2.4, dt);
         s.yaw += angleDelta(s.yaw, s.tYaw) * k;
@@ -258,7 +282,7 @@ export default function Globe({ lite, reduced, go }) {
       } else {
         s.yaw += s.vel * dt * (reduced ? 0 : 1);
         s.vel *= Math.exp(-2.5 * dt);
-        if (!reduced) s.yaw += 0.14 * dt; // always spinning (paused only while dragging)
+        if (!reduced) s.yaw += 0.14 * dt; // always spinning; pauses while a pin is hovered or the globe is dragged
       }
     }
     if (spin.current) spin.current.rotation.set(s.pitch, s.yaw, 0);
@@ -286,8 +310,8 @@ export default function Globe({ lite, reduced, go }) {
             s.drag = true; s.moved = 0; s.x = e.clientX; s.y = e.clientY; s.vel = 0;
             document.body.style.cursor = 'grabbing';
           }}
-          onPointerOver={() => { if (!st.current.drag) document.body.style.cursor = 'grab'; }}
-          onPointerOut={() => { if (!st.current.drag) document.body.style.cursor = ''; }}
+          onPointerOver={() => { if (!st.current.drag && !getState().hoverSection) document.body.style.cursor = 'grab'; }}
+          onPointerOut={() => { if (!st.current.drag && !getState().hoverSection) document.body.style.cursor = ''; }}
         >
           <sphereGeometry args={[GLOBE_R * 1.01, 24, 24]} />
           <meshBasicMaterial color="#0a3a57" transparent opacity={0.16} depthWrite={false} />

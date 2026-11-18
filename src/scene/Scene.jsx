@@ -44,7 +44,8 @@ function Rig({ hub, reduced }) {
     c.s += (ts - c.s) * k;
     if (hub.current) hub.current.scale.setScalar(c.s);
 
-    if (!reduced) {
+    // Gentle pointer parallax, held still while a pin is hovered so it stays under the cursor.
+    if (!reduced && !getState().pinHover) {
       c.px += (state.pointer.x * 0.35 - c.px) * damp(2, dt);
       c.py += (state.pointer.y * 0.18 - c.py) * damp(2, dt);
     }

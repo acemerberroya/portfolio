@@ -14,7 +14,7 @@ export default function Item({ id, as: Tag = 'li', className = '', children, ...
     ref.current.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
   }, [focused]);
 
-  const on = () => setState({ hover: id });
+  const on = () => setState({ hover: id, hoverFrom: 'panel' });
   const off = () => setState((s) => (s.hover === id ? { hover: null } : {}));
 
   return (

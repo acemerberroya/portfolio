@@ -35,15 +35,35 @@ function Satellite({ item, angle }) {
     }
   });
 
-  const enter = () => { setState({ hover: item.id }); document.body.style.cursor = 'pointer'; };
-  const leave = () => { setState((s) => (s.hover === item.id ? { hover: null } : {})); document.body.style.cursor = ''; };
+  const timer = useRef();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const enter = (e) => {
+    e?.stopPropagation?.();
+    clearTimeout(timer.current);
+    const s = getState();
+    if (s.hover !== item.id || s.hoverFrom !== 'scene') setState({ hover: item.id, hoverFrom: 'scene' });
+    document.body.style.cursor = 'pointer';
+  };
+  const leave = (e) => {
+    e?.stopPropagation?.();
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      setState((s) => (s.hover === item.id ? { hover: null } : {}));
+      document.body.style.cursor = '';
+    }, 140);
+  };
   const pick = (e) => { e?.stopPropagation?.(); setState({ focus: item.id }); };
 
   return (
     <group position={[R * Math.sin(angle), 0, R * Math.cos(angle)]}>
-      <mesh ref={mesh} onPointerOver={enter} onPointerOut={leave} onClick={pick}>
+      <mesh ref={mesh}>
         <octahedronGeometry args={[0.075, 0]} />
         <meshBasicMaterial color={selected ? AMBER : CYAN} toneMapped={false} wireframe={!lit} />
+      </mesh>
+      {/* Fixed-size hit area: the visible shard grows when lit, this doesn't. */}
+      <mesh onPointerOver={enter} onPointerOut={leave} onClick={pick}>
+        <sphereGeometry args={[0.2, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       <Html position={[0, 0.2, 0]} center zIndexRange={[4, 0]}>
         <div
@@ -76,10 +96,13 @@ export default function Satellites({ reduced }) {
     const n = items.length;
     if (!ring.current || !n) return;
     const s = st.current;
-    const { focus, hover } = getSel();
-    const idx = items.findIndex((i) => i.id === (hover || focus));
+    const { focus, hover, hoverFrom } = getSel();
+    // Hovering a satellite in the scene freezes the ring so it stays under the
+    // cursor; hovering an item in the panel swings its satellite to the front.
+    const sceneHover = hover && hoverFrom === 'scene';
+    const idx = sceneHover ? -1 : items.findIndex((i) => i.id === (hover || focus));
     if (idx >= 0) s.angle += angleDelta(s.angle, -(idx / n) * Math.PI * 2) * (reduced ? 1 : damp(3, dt));
-    else if (!reduced) s.angle -= 0.07 * dt;
+    else if (!reduced && !sceneHover) s.angle -= 0.07 * dt;
     s.appear = reduced ? 1 : Math.min(1, s.appear + dt * 1.4);
     const e = 1 - Math.pow(1 - s.appear, 3);
     ring.current.rotation.y = s.angle + (1 - e) * 1.2;
@@ -105,5 +128,5 @@ export default function Satellites({ reduced }) {
 // Read without subscribing (the frame loop reads every frame anyway).
 function getSel() {
   const s = getState();
-  return { focus: s.focus, hover: s.hover };
+  return { focus: s.focus, hover: s.hover, hoverFrom: s.hoverFrom };
 }

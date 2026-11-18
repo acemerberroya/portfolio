@@ -103,14 +103,20 @@ ul, ol { margin: 0; padding: 0; }
   font-family: var(--font); color: #e6f8ff; cursor: pointer; user-select: none;
   background: rgba(5, 12, 20, 0.82); border: 1px solid rgba(110, 215, 255, 0.45);
   border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; line-height: 1.3;
-  white-space: nowrap; transition: opacity 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+  white-space: nowrap; transition: opacity 0.2s, border-color 0.2s, background 0.2s;
   display: flex; flex-direction: column; align-items: center;
 }
-.bl-hint { display: none; font-size: 11px; font-weight: 500; color: var(--ink-soft); }
+.beacon-label { position: relative; }
+.bl-hint {
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; font-weight: 500; color: var(--ink-soft);
+  padding: 2px 8px; border-radius: 999px; background: rgba(5, 12, 20, 0.9);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
 .bl-place { font-size: 11px; color: var(--amber); font-weight: 600; }
 .beacon-label.is-home { border-color: rgba(255, 197, 107, 0.6); }
-.beacon-label.is-hovered, .beacon-label:hover { transform: scale(1.08); background: rgba(10, 28, 40, 0.95); }
-.beacon-label.is-hovered .bl-hint, .beacon-label:hover .bl-hint, .beacon-label.is-active .bl-hint { display: block; }
+.beacon-label.is-hovered, .beacon-label:hover { background: rgba(10, 28, 40, 0.95); border-color: var(--cyan); }
+.beacon-label.is-hovered .bl-hint, .beacon-label:hover .bl-hint, .beacon-label.is-active .bl-hint { opacity: 1; }
 .beacon-label.is-active { border-color: var(--amber); color: var(--amber); }
 .sat-label { display: block; max-width: 190px; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; }
 .sat-label.is-lit { border-color: var(--cyan); background: rgba(10, 30, 44, 0.96); }

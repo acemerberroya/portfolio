@@ -8,7 +8,9 @@ let state = {
   section: 'top', // which section is open
   focus: null, // item id that's selected (panel <-> globe satellite)
   hover: null, // item id under the pointer
-  hoverSection: null, // beacon under the pointer
+  hoverFrom: null, // 'panel' or 'scene': where that hover came from
+  hoverSection: null, // beacon under the pointer (from the globe or the nav)
+  pinHover: null, // beacon under the pointer on the globe itself: freezes the globe
   inset: { x: 0, y: 0 }, // px the panel covers, so the camera can recentre the globe
   pulse: 0, // bumps on every navigation; drives the globe's scan sweep
 };
