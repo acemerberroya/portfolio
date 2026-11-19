@@ -7,7 +7,6 @@ export default function EuCompare(props) {
     <Section
       id="eu-compare"
       title="Comparative Analysis"
-      intro="All three companies side by side. Each cell shows my rating out of 5 and the main reason for it."
       {...props}
     >
       <div className="eu-table-wrap" tabIndex={0} role="region" aria-label="Comparison table, scrolls sideways on small screens">

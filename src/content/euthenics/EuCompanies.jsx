@@ -8,7 +8,6 @@ export default function EuCompanies(props) {
     <Section
       id="eu-companies"
       title="Top 3 Target Companies"
-      intro="The three Host Training Establishments I researched, each judged against my goals in cloud, network and security work."
       {...props}
     >
       <ul className="stack">

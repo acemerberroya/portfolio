@@ -9,7 +9,6 @@ export default function EuVerdict(props) {
     <Section
       id="eu-verdict"
       title="Final Recommendation"
-      intro="The company that came out ahead of the comparison, and why."
       {...props}
     >
       <ul className="stack">

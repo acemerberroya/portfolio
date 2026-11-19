@@ -7,7 +7,6 @@ export default function EuCriteria(props) {
     <Section
       id="eu-criteria"
       title="Evaluation Criteria"
-      intro="The six criteria from the Requirement 3 brief. I weighted them by what matters most for my goals, then rated each company from 1 (weak) to 5 (strong)."
       {...props}
     >
       <ol className="hard">
@@ -25,9 +24,6 @@ export default function EuCriteria(props) {
           </Item>
         ))}
       </ol>
-      <p className="soft eu-footnote">
-        Weighted score = sum of (rating × weight) ÷ 100, so it stays on the same 1–5 scale. The ratings are my own judgement from the research, not published figures.
-      </p>
     </Section>
   );
 }
