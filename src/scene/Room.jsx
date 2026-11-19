@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ledFragment, ledVertex } from './shaders.js';
+import { bakedPlane, roomLights } from './bake.js';
 
 const FLOOR_Y = -3.2;
 const CEIL_Y = 6;
@@ -125,6 +126,22 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
   const wallTex = useMemo(() => panelTexture({ base: '#1a222c', seam: '#0e141b', cols: 3, rows: 2, repeat: [4, 2] }), []);
   const floorTex = useMemo(() => panelTexture({ base: '#141a22', seam: '#0a0e13', cols: 4, rows: 4, noise: 10, repeat: [6, 6] }), []);
   const glow = useMemo(() => glowTexture(theme.glowInner, theme.glowMid), [theme]);
+  // Floor, walls and ceiling with the room's lighting baked into vertex colours.
+  const surfaces = useMemo(() => {
+    const lights = roomLights(theme.light);
+    const midY = (FLOOR_Y + CEIL_Y) / 2;
+    const H = CEIL_Y - FLOOR_Y;
+    const list = [
+      // The floor was metalness 0.35, so 65% of it is diffuse.
+      { key: 'floor', width: SIDE_X * 2, height: 24, segX: 44, segY: 48, position: [0, FLOOR_Y, 0], rotation: [-Math.PI / 2, 0, 0], map: floorTex, color: '#9fb0c2', diffuse: 0.65 },
+      { key: 'back', width: SIDE_X * 2, height: H, segX: 44, segY: 18, position: [0, midY, BACK_Z], rotation: [0, 0, 0], map: wallTex },
+      { key: 'left', width: 22, height: H, segX: 44, segY: 18, position: [-SIDE_X, midY, 1], rotation: [0, Math.PI / 2, 0], map: wallTex },
+      { key: 'right', width: 22, height: H, segX: 44, segY: 18, position: [SIDE_X, midY, 1], rotation: [0, -Math.PI / 2, 0], map: wallTex },
+      { key: 'ceiling', width: SIDE_X * 2, height: 22, segX: 22, segY: 22, position: [0, CEIL_Y, 1], rotation: [Math.PI / 2, 0, 0], color: '#0b0f14' },
+      { key: 'front', width: SIDE_X * 2, height: H, segX: 22, segY: 9, position: [0, midY, 12], rotation: [0, Math.PI, 0], map: wallTex },
+    ];
+    return list.map((sf) => ({ ...sf, color: sf.color || '#ffffff', geometry: bakedPlane({ ...sf, lights }) }));
+  }, [theme, floorTex, wallTex]);
   const pillars = useMemo(() => {
     const xs = lite ? [-8, 8] : [-9, -5, 5, 9];
     return xs;
@@ -135,6 +152,7 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
       <fog attach="fog" args={['#05080d', 10, 28]} />
       <color attach="background" args={['#05080d']} />
 
+      {/* Live lights: still used by the small objects (racks, pillars, pedestal). */}
       <ambientLight intensity={0.18} />
       <hemisphereLight args={['#6d8fb3', '#07090d', 0.6]} />
       {/* Soft key light from above and in front */}
@@ -142,35 +160,16 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
       {/* The hologram lights the room */}
       <pointLight position={[0, 0.35, 0]} color={theme.light} intensity={38} distance={18} decay={1.6} />
 
-      {/* Floor */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y, 0]}>
-        <planeGeometry args={[SIDE_X * 2, 24]} />
-        <meshStandardMaterial map={floorTex} roughness={0.38} metalness={0.35} color="#9fb0c2" />
-      </mesh>
+      {/* Floor, walls and ceiling: the same lighting, baked once (see bake.js). */}
+      {surfaces.map((sf) => (
+        <mesh key={sf.key} geometry={sf.geometry} position={sf.position} rotation={sf.rotation}>
+          <meshBasicMaterial map={sf.map} color={sf.color} vertexColors />
+        </mesh>
+      ))}
       {/* Hologram light pooled on the floor */}
       <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y + 0.01, 0]}>
         <planeGeometry args={[9, 9]} />
         <meshBasicMaterial map={glow} transparent opacity={reduced ? 0.55 : 0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </mesh>
-
-      {/* Walls and ceiling */}
-      <mesh position={[0, (FLOOR_Y + CEIL_Y) / 2, BACK_Z]}>
-        <planeGeometry args={[SIDE_X * 2, CEIL_Y - FLOOR_Y]} />
-        <meshLambertMaterial map={wallTex} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * SIDE_X, (FLOOR_Y + CEIL_Y) / 2, 1]} rotation-y={-s * Math.PI / 2}>
-          <planeGeometry args={[22, CEIL_Y - FLOOR_Y]} />
-          <meshLambertMaterial map={wallTex} />
-        </mesh>
-      ))}
-      <mesh position={[0, CEIL_Y, 1]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[SIDE_X * 2, 22]} />
-        <meshLambertMaterial color="#0b0f14" />
-      </mesh>
-      <mesh position={[0, (FLOOR_Y + CEIL_Y) / 2, 12]} rotation-y={Math.PI}>
-        <planeGeometry args={[SIDE_X * 2, CEIL_Y - FLOOR_Y]} />
-        <meshLambertMaterial map={wallTex} />
       </mesh>
 
       {/* Back-wall pillars with recessed light slits for depth */}

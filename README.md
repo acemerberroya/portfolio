@@ -68,7 +68,12 @@ In Page view the Euthenics sections follow the main portfolio.
 ## Performance and fallbacks
 
 - The scene is a separate chunk loaded after the content paints. three.js has its own chunk.
-- Pixel ratio capped at 1.75 (1.25 on lite), and dropped to 1 if the frame rate falls.
+- Pixel ratio starts at 1.25 (1 on lite), steps up to 1.5 only while frames stay fast, and drops to 1
+  if they slow down. MSAA is skipped on high-DPI screens, where it costs a lot for no visible gain.
+- The room's floor, walls and ceiling have their lighting baked into vertex colours once at load
+  (`src/scene/bake.js`), so they draw unlit; only the small objects use live lights.
+- Both hubs share one light-trail builder (`src/scene/trails.js`): every strand of a hub is one
+  `LineSegments` draw call.
 - No post-processing. Glow is done with additive fresnel shaders. The land is one `Points`
   draw call (5,200 dots precomputed in `src/scene/landDots.json`). Room textures are drawn on
   a canvas at runtime, so there are no image downloads.

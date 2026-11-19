@@ -1,154 +1,64 @@
 import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { companies, recommendation } from '../data/euthenics.js';
 import { ROOMS } from '../rooms.js';
 import { GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
 import { Beacon, useFresnel } from './Globe.jsx';
 import { useHub } from './hub.js';
 import { glowTexture } from './Room.jsx';
-import { dotsFragment, dotsVertex, trailFragment, trailVertex } from './shaders.js';
+import { dotsFragment, dotsVertex } from './shaders.js';
+import { buildConduits, buildTrails, useTrailMaterial } from './trails.js';
 
-// The Euthenics room's hub: a Jarvis-style projection of gold light trails,
-// spirals and sparks. It is driven by the same hub as the globe (facing,
-// scan sweep, spin, drag), carries the same beacons and satellites, and only
-// swaps the body and the palette.
+// The Euthenics room's hub: a gold AI core built around the evaluation.
+//  - a shell of flowing light trails and sparks, with spirals at the centre,
+//  - three orbits, one per target company, each carrying a bright node
+//    (the recommended company's orbit burns brightest),
+//  - conduits from the core to every beacon, with pulses running outward,
+//  - a flare through the whole core on every navigation.
+// It is driven by the same hub as the globe (facing, scan sweep, spin, drag)
+// and carries the same beacons and satellites.
 const ROOM = ROOMS.euthenics;
 export const GOLD = '#ffb648';
 const HOT = '#fff1d0';
 const R = GLOBE_R;
 
-// Small seeded PRNG so the hologram looks the same on every visit.
-function rng(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// One orbit per company: radius, tilt and speed. The pick gets the hot colour.
+const ORBITS = companies.map((c, i) => ({
+  id: c.id,
+  r: R * (0.5 + i * 0.16),
+  tilt: [0.5 + i * 0.55, i * 0.9, 0.3 - i * 0.35],
+  speed: 0.5 - i * 0.12,
+  pick: c.id === recommendation.choice,
+}));
 
-function randomAxis(rand, out = new THREE.Vector3()) {
-  const u = rand() * 2 - 1;
-  const th = rand() * Math.PI * 2;
-  const s = Math.sqrt(1 - u * u);
-  return out.set(s * Math.cos(th), u, s * Math.sin(th));
-}
-
-// One LineSegments geometry holding every strand: arcs on many tilted planes,
-// spirals at the core, and short radial "data ticks" on the shell.
-function buildTrails(lite) {
-  const rand = rng(1705);
-  const pos = [];
-  const tAttr = [];
-  const seed = [];
-  const sparks = [];
-  const axis = new THREE.Vector3();
-  const u = new THREE.Vector3();
-  const v = new THREE.Vector3();
-  const p = new THREE.Vector3();
-  const q = new THREE.Vector3();
-
-  const push = (a, b, ta, tb, s) => {
-    pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
-    tAttr.push(ta, tb);
-    seed.push(s, s);
-  };
-  const basis = (ax) => {
-    u.set(1, 0, 0);
-    if (Math.abs(ax.x) > 0.9) u.set(0, 1, 0);
-    u.cross(ax).normalize();
-    v.copy(ax).cross(u).normalize();
-  };
-
-  // Arcs: mostly near the shell, some deeper, partial lengths, a slight wobble.
-  const arcs = lite ? 100 : 220;
-  for (let i = 0; i < arcs; i++) {
-    randomAxis(rand, axis);
-    basis(axis);
-    const r = R * (0.5 + 0.48 * Math.sqrt(rand()));
-    const a0 = rand() * Math.PI * 2;
-    const len = Math.PI * 2 * (0.2 + 0.75 * rand());
-    const segs = Math.max(8, Math.ceil((len / (Math.PI * 2)) * (lite ? 48 : 72)));
-    const wob = 0.02 + rand() * 0.04;
-    const k = 3 + Math.floor(rand() * 6);
-    const ph = rand() * 6.28;
-    const s = rand();
-    for (let j = 0; j < segs; j++) {
-      const t0 = j / segs;
-      const t1 = (j + 1) / segs;
-      const at = (t) => {
-        const th = a0 + len * t;
-        const rr = r * (1 + wob * Math.sin(th * k + ph));
-        return [Math.cos(th) * rr, Math.sin(th) * rr];
-      };
-      const [x0, y0] = at(t0);
-      const [x1, y1] = at(t1);
-      p.copy(u).multiplyScalar(x0).addScaledVector(v, y0);
-      q.copy(u).multiplyScalar(x1).addScaledVector(v, y1);
-      push(p, q, t0, t1, s);
-      if (j % 6 === 0) sparks.push(p.x, p.y, p.z);
-    }
-  }
-
-  // Spirals: the swirling core of the reference image.
-  const spirals = lite ? 3 : 5;
-  for (let i = 0; i < spirals; i++) {
-    randomAxis(rand, axis);
-    axis.lerp(new THREE.Vector3(0, 0, 1), 0.55).normalize(); // lean toward the viewer
-    basis(axis);
-    const turns = 2.5 + rand() * 2;
-    const r0 = R * 0.06;
-    const r1 = R * (0.45 + rand() * 0.3);
-    const segs = lite ? 140 : 260;
-    const a0 = rand() * 6.28;
-    const s = rand() * 0.3; // spirals reveal early
-    for (let j = 0; j < segs; j++) {
-      const t0 = j / segs;
-      const t1 = (j + 1) / segs;
-      const at = (t, out) => {
-        const th = a0 + t * turns * Math.PI * 2;
-        const rr = r0 + (r1 - r0) * t;
-        return out.copy(u).multiplyScalar(Math.cos(th) * rr).addScaledVector(v, Math.sin(th) * rr);
-      };
-      push(at(t0, p), at(t1, q), t0, t1, s);
-    }
-  }
-
-  // Data ticks: short radial dashes on the shell, like the bright flecks in the reference.
-  const ticks = lite ? 160 : 360;
-  for (let i = 0; i < ticks; i++) {
-    randomAxis(rand, axis);
-    const r = R * (0.86 + rand() * 0.14);
-    const l = R * (0.03 + rand() * 0.07);
-    p.copy(axis).multiplyScalar(r);
-    q.copy(axis).multiplyScalar(r + l);
-    push(p, q, 0, 1, rand());
-    sparks.push(q.x, q.y, q.z);
-  }
-
-  // Loose sparks through the volume.
-  const loose = lite ? 500 : 1100;
-  for (let i = 0; i < loose; i++) {
-    randomAxis(rand, axis);
-    const r = R * Math.cbrt(0.08 + 0.92 * rand());
-    sparks.push(axis.x * r, axis.y * r, axis.z * r);
-  }
-
-  const lines = new THREE.BufferGeometry();
-  lines.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  lines.setAttribute('aT', new THREE.Float32BufferAttribute(tAttr, 1));
-  lines.setAttribute('aSeed', new THREE.Float32BufferAttribute(seed, 1));
-  const points = new THREE.BufferGeometry();
-  points.setAttribute('position', new THREE.Float32BufferAttribute(sparks, 3));
-  return { lines, points };
+function Orbit({ o, reduced }) {
+  const node = useRef();
+  useFrame((state) => {
+    if (!node.current) return;
+    const a = (reduced ? 0.6 : state.clock.elapsedTime * o.speed) + o.r;
+    node.current.position.set(Math.cos(a) * o.r, Math.sin(a) * o.r, 0);
+  });
+  const color = o.pick ? HOT : GOLD;
+  return (
+    <group rotation={o.tilt}>
+      <mesh>
+        <torusGeometry args={[o.r, o.pick ? 0.006 : 0.004, 4, 96]} />
+        <meshBasicMaterial color={color} transparent opacity={o.pick ? 0.55 : 0.45} toneMapped={false} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={node}>
+        <sphereGeometry args={[o.pick ? 0.06 : 0.045, 12, 12]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+    </group>
+  );
 }
 
 export default function Hologram({ lite, reduced, go }) {
   const { gl } = useThree();
   const rings = useRef();
   const core = useRef();
+  const glowMat = useRef();
   const reveal = useRef(reduced ? 1 : 0);
 
   // Same uniform names as the globe's dots, so the shared hub drives the scan sweep.
@@ -164,6 +74,7 @@ export default function Hologram({ lite, reduced, go }) {
       uReveal: { value: reveal.current },
       uFlicker: { value: 1 },
       uHot: { value: new THREE.Color(HOT) },
+      uBase: { value: 0.38 },
     }),
     [lite, gl]
   );
@@ -172,14 +83,20 @@ export default function Hologram({ lite, reduced, go }) {
     sections: ROOM.sections, homePin: ROOM.homePin, homeId: ROOM.homeId, reduced, uniforms,
   });
 
-  const geo = useMemo(() => buildTrails(lite), [lite]);
-  const trailMat = useMemo(
-    () => new THREE.ShaderMaterial({
-      vertexShader: trailVertex, fragmentShader: trailFragment, uniforms,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  const geo = useMemo(
+    () => buildTrails({
+      R, seed: 1705,
+      arcs: lite ? 70 : 130, arcDensity: lite ? 36 : 52,
+      spirals: lite ? 3 : 4, spiralSegs: lite ? 100 : 160,
+      ticks: lite ? 120 : 220, loose: lite ? 350 : 650,
     }),
-    [uniforms]
+    [lite]
   );
+  const conduits = useMemo(
+    () => buildConduits(ROOM.sections.map((s) => latLngToVec3(s.lat, s.lng, R))),
+    []
+  );
+  const trailMat = useTrailMaterial(uniforms);
   const sparkMat = useMemo(
     () => new THREE.ShaderMaterial({
       vertexShader: dotsVertex, fragmentShader: dotsFragment, uniforms,
@@ -202,13 +119,18 @@ export default function Hologram({ lite, reduced, go }) {
       reveal.current = reduced ? 1 : Math.min(1, reveal.current + dt / 1.6);
       uniforms.uReveal.value = reveal.current;
     }
-    uniforms.uFlicker.value = reduced
+    // Navigation flare: rides the shared scan sweep (0 → 1 on every navigation).
+    const sc = st.current.scan;
+    const flare = reduced || sc >= 1 ? 0 : Math.sin(sc * Math.PI);
+    const flicker = reduced
       ? 1
       : reveal.current < 1
         ? 0.55 + 0.45 * Math.abs(Math.sin(t * 37.0) * Math.sin(t * 13.0))
         : 0.94 + 0.06 * Math.sin(t * 23.0) * Math.sin(t * 7.0);
+    uniforms.uFlicker.value = flicker * (1 + flare * 0.9);
+    if (glowMat.current) glowMat.current.opacity = 0.4 + flare * 0.45;
+    if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.08 * Math.sin(t * 2.2)) * (1 + flare * 0.6));
     if (reduced) return;
-    if (core.current) core.current.scale.setScalar(1 + 0.08 * Math.sin(t * 2.2));
     if (rings.current) {
       rings.current.children[0].rotation.z += dt * 0.15;
       rings.current.children[1].rotation.z -= dt * 0.1;
@@ -219,12 +141,13 @@ export default function Hologram({ lite, reduced, go }) {
   return (
     <group>
       <group ref={spin}>
-        {/* Grab surface (also the faint body of the projection) */}
+        {/* Grab surface: invisible, only there to be dragged */}
         <mesh {...bind}>
-          <sphereGeometry args={[R * 1.01, 24, 24]} />
-          <meshBasicMaterial color="#2a1806" transparent opacity={0.05} depthWrite={false} />
+          <sphereGeometry args={[R * 1.01, 16, 12]} />
+          <meshBasicMaterial colorWrite={false} depthWrite={false} />
         </mesh>
         <lineSegments geometry={geo.lines} material={trailMat} />
+        <lineSegments geometry={conduits} material={trailMat} />
         <points geometry={geo.points} material={sparkMat} />
         {ROOM.sections.map((sec) => (
           <Beacon
@@ -239,9 +162,12 @@ export default function Hologram({ lite, reduced, go }) {
         ))}
       </group>
 
+      {/* The three company orbits around the core */}
+      {ORBITS.map((o) => <Orbit key={o.id} o={o} reduced={reduced} />)}
+
       {/* Bright core and its glow, facing the camera */}
       <sprite scale={[R * 0.9, R * 0.9, 1]}>
-        <spriteMaterial map={glow} transparent opacity={0.4} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        <spriteMaterial ref={glowMat} map={glow} transparent opacity={0.4} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </sprite>
       <mesh ref={core}>
         <sphereGeometry args={[0.11, 20, 20]} />
@@ -249,22 +175,22 @@ export default function Hologram({ lite, reduced, go }) {
       </mesh>
 
       <mesh material={shell}>
-        <sphereGeometry args={[R * 1.015, 48, 48]} />
+        <sphereGeometry args={[R * 1.015, 32, 24]} />
       </mesh>
       <mesh material={halo}>
-        <sphereGeometry args={[R * 1.2, 32, 32]} />
+        <sphereGeometry args={[R * 1.2, 24, 18]} />
       </mesh>
       <group ref={rings}>
         <mesh rotation={[Math.PI / 2.2, 0.3, 0]}>
-          <torusGeometry args={[R * 1.18, 0.005, 6, 160]} />
+          <torusGeometry args={[R * 1.18, 0.005, 4, 120]} />
           <meshBasicMaterial color={GOLD} transparent opacity={0.5} toneMapped={false} />
         </mesh>
         <mesh rotation={[Math.PI / 1.75, -0.4, 0]}>
-          <torusGeometry args={[R * 1.3, 0.004, 6, 160]} />
+          <torusGeometry args={[R * 1.3, 0.004, 4, 120]} />
           <meshBasicMaterial color={GOLD} transparent opacity={0.28} toneMapped={false} />
         </mesh>
         <mesh rotation={[0.2, 0, Math.PI / 2.6]}>
-          <torusGeometry args={[R * 1.08, 0.006, 6, 160, Math.PI * 1.4]} />
+          <torusGeometry args={[R * 1.08, 0.006, 4, 90, Math.PI * 1.4]} />
           <meshBasicMaterial color={HOT} transparent opacity={0.35} toneMapped={false} />
         </mesh>
       </group>

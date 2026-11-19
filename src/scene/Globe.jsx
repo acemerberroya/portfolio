@@ -8,6 +8,8 @@ import { getState, setState, useStore } from '../store.js';
 import { AMBER, CYAN, GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
 import { dotsFragment, dotsVertex, fresnelFragment, fresnelVertex } from './shaders.js';
 import { useHub } from './hub.js';
+import { glowTexture } from './Room.jsx';
+import { buildTrails, useTrailMaterial } from './trails.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const tmpA = new THREE.Vector3();
@@ -211,6 +213,12 @@ export default function Globe({ lite, reduced, go }) {
       uColor: { value: new THREE.Color(CYAN) },
       uWarm: { value: new THREE.Color(AMBER) },
       uHome: { value: latLngToVec3(HOME_PIN.lat, HOME_PIN.lng, 1) },
+      // Light trails (shared with the Euthenics core): flowing data around and inside the globe.
+      uTime: { value: 0 },
+      uReveal: { value: 1 },
+      uFlicker: { value: 1 },
+      uHot: { value: new THREE.Color('#e6fbff') },
+      uBase: { value: 0.22 },
     }),
     [lite, gl]
   );
@@ -218,9 +226,41 @@ export default function Globe({ lite, reduced, go }) {
   // Facing, scan sweep, spin and drag are shared with the Euthenics hologram.
   const { spin, st, bind } = useHub({ sections: SECTIONS, homePin: HOME_PIN, homeId: HOME.id, reduced, uniforms });
 
+  // A thin shell of data trails hugging the surface (turns with the map) and a
+  // looser swirl inside it (turns on its own), around a pulsing energy core.
+  const shellTrails = useMemo(
+    () => buildTrails({
+      R: GLOBE_R, seed: 42, arcs: lite ? 40 : 80, arcDensity: lite ? 34 : 44,
+      rMin: 1.0, rSpan: 0.08, lenMin: 0.06, lenSpan: 0.3, ticks: lite ? 60 : 120,
+    }),
+    [lite]
+  );
+  const innerTrails = useMemo(
+    () => buildTrails({
+      R: GLOBE_R, seed: 7, arcs: lite ? 30 : 60, arcDensity: lite ? 30 : 40,
+      rMin: 0.18, rSpan: 0.55, spirals: 2, spiralSegs: lite ? 80 : 120, loose: lite ? 120 : 260,
+    }),
+    [lite]
+  );
+  const trailMat = useTrailMaterial(uniforms);
+  const glow = useMemo(() => glowTexture(), []);
+  const inner = useRef();
+  const core = useRef();
+  const glowMat = useRef();
+
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    if (rings.current && !reduced) {
+    const t = state.clock.elapsedTime;
+    if (!reduced) uniforms.uTime.value = t;
+    // Every navigation sends a flare through the core and trails (rides the scan sweep).
+    const sc = st.current.scan;
+    const flare = reduced || sc >= 1 ? 0 : Math.sin(sc * Math.PI);
+    uniforms.uFlicker.value = 1 + flare * 1.2;
+    if (glowMat.current) glowMat.current.opacity = 0.35 + flare * 0.45;
+    if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.1 * Math.sin(t * 2.4)) * (1 + flare * 0.7));
+    if (reduced) return;
+    if (inner.current) inner.current.rotation.y -= dt * 0.25;
+    if (rings.current) {
       rings.current.children[0].rotation.z += dt * 0.15;
       rings.current.children[1].rotation.z -= dt * 0.1;
     }
@@ -233,26 +273,39 @@ export default function Globe({ lite, reduced, go }) {
     <group>
       <group ref={spin}>
         <mesh {...bind}>
-          <sphereGeometry args={[GLOBE_R * 1.01, 24, 24]} />
+          <sphereGeometry args={[GLOBE_R * 1.01, 20, 14]} />
           <meshBasicMaterial color="#0a3a57" transparent opacity={0.16} depthWrite={false} />
         </mesh>
         <LandDots lite={lite} uniforms={uniforms} />
         <Graticule />
+        <lineSegments geometry={shellTrails.lines} material={trailMat} />
         {SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
       </group>
+      {/* Inner swirl and energy core */}
+      <group ref={inner}>
+        <lineSegments geometry={innerTrails.lines} material={trailMat} />
+      </group>
+      <sprite scale={[GLOBE_R * 1.1, GLOBE_R * 1.1, 1]}>
+        <spriteMaterial ref={glowMat} map={glow} transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </sprite>
+      <mesh ref={core}>
+        <sphereGeometry args={[0.1, 20, 20]} />
+        <meshBasicMaterial color="#e6fbff" toneMapped={false} />
+      </mesh>
+
       <mesh material={shell}>
-        <sphereGeometry args={[GLOBE_R * 1.015, 48, 48]} />
+        <sphereGeometry args={[GLOBE_R * 1.015, 32, 24]} />
       </mesh>
       <mesh material={halo}>
-        <sphereGeometry args={[GLOBE_R * 1.2, 32, 32]} />
+        <sphereGeometry args={[GLOBE_R * 1.2, 24, 18]} />
       </mesh>
       <group ref={rings}>
         <mesh rotation={[Math.PI / 2.2, 0.3, 0]}>
-          <torusGeometry args={[GLOBE_R * 1.18, 0.005, 6, 160]} />
+          <torusGeometry args={[GLOBE_R * 1.18, 0.005, 4, 120]} />
           <meshBasicMaterial color={CYAN} transparent opacity={0.45} toneMapped={false} />
         </mesh>
         <mesh rotation={[Math.PI / 1.75, -0.4, 0]}>
-          <torusGeometry args={[GLOBE_R * 1.3, 0.004, 6, 160]} />
+          <torusGeometry args={[GLOBE_R * 1.3, 0.004, 4, 120]} />
           <meshBasicMaterial color={CYAN} transparent opacity={0.25} toneMapped={false} />
         </mesh>
       </group>

@@ -146,6 +146,7 @@ export const trailFragment = /* glsl */ `
   uniform vec3 uColor;
   uniform vec3 uHot;
   uniform float uFlicker;
+  uniform float uBase;
   varying float vGlow;
   varying float vScan;
   varying float vFront;
@@ -153,7 +154,7 @@ export const trailFragment = /* glsl */ `
   void main() {
     if (vShow < 0.5) discard;
     vec3 col = mix(uColor, uHot, clamp(vGlow * 0.9 + vScan * 0.8, 0.0, 1.0));
-    float a = (0.38 + 0.62 * vGlow) * mix(0.2, 1.0, vFront) + vScan * 0.6;
+    float a = (uBase + (1.0 - uBase) * vGlow) * mix(0.2, 1.0, vFront) + vScan * 0.6;
     gl_FragColor = vec4(col, a * uFlicker);
   }
 `;

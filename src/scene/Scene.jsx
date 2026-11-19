@@ -108,14 +108,18 @@ export default function Scene({ env, go, switchRoom, onReady }) {
   const hub = useRef();
   const room = useStore((s) => s.room);
   const eu = ROOMS.euthenics;
-  const [dpr, setDpr] = useState(lite ? 1 : 1.5);
+  // Start at a moderate resolution; step up only when frames come in fast,
+  // and down to 1 as soon as they don't.
+  const [dpr, setDpr] = useState(lite ? 1 : 1.25);
 
   return (
     <Canvas
       className="scene-canvas"
       dpr={[1, dpr]}
       frameloop={reduced ? 'demand' : 'always'}
-      gl={{ antialias: !lite, alpha: false, stencil: false, powerPreference: 'high-performance' }}
+      // MSAA only where it shows: on high-DPI screens the extra pixels already
+      // smooth edges, and MSAA there costs a lot of GPU time for no visible gain.
+      gl={{ antialias: !lite && (window.devicePixelRatio || 1) < 1.5, alpha: false, stencil: false, powerPreference: 'high-performance' }}
       camera={{ fov: CAM.fov, position: [CAM.x, CAM.y, CAM.z], near: 0.1, far: 60 }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -123,7 +127,12 @@ export default function Scene({ env, go, switchRoom, onReady }) {
         requestAnimationFrame(() => requestAnimationFrame(onReady));
       }}
     >
-      <PerformanceMonitor flipflops={2} onDecline={() => setDpr(1)} onFallback={() => setDpr(1)} />
+      <PerformanceMonitor
+        flipflops={3}
+        onIncline={() => setDpr(lite ? 1 : 1.5)}
+        onDecline={() => setDpr(1)}
+        onFallback={() => setDpr(1)}
+      />
       <Invalidator reduced={reduced} />
       <Rig hub={hub} reduced={reduced} />
       {room === 'euthenics' ? (
