@@ -6,6 +6,7 @@ import Room, { GOLD_THEME } from './Room.jsx';
 import Globe from './Globe.jsx';
 import Hologram, { GOLD } from './Hologram.jsx';
 import Door, { DOOR } from './Door.jsx';
+import HoloPaper from './HoloPaper.jsx';
 import Satellites from './Satellites.jsx';
 import { CYAN, GLOBE_Y, damp } from './geo.js';
 import { beamFragment, beamVertex } from './shaders.js';
@@ -150,6 +151,8 @@ export default function Scene({ env, go, switchRoom, onReady }) {
           <group ref={hub} position={[0, GLOBE_Y, 0]}>
             <Hologram lite={lite} reduced={reduced} go={go} />
             <Satellites reduced={reduced} itemsFor={eu.satellitesFor} palette={eu.palette} />
+            {/* The reflection, as a folded holographic paper in front of the core */}
+            <HoloPaper go={go} reduced={reduced} position={[1.7, -1.4, 2.0]} rotation={[-0.08, -0.35, 0]} />
           </group>
           <Beam reduced={reduced} lite={lite} color={GOLD} />
         </>

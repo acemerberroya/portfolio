@@ -10,6 +10,7 @@ import EuCompanies from './euthenics/EuCompanies.jsx';
 import EuCriteria from './euthenics/EuCriteria.jsx';
 import EuCompare from './euthenics/EuCompare.jsx';
 import EuVerdict from './euthenics/EuVerdict.jsx';
+import EuReflection from './euthenics/EuReflection.jsx';
 
 export const CONTENT = {
   top: Home,
@@ -25,4 +26,5 @@ export const CONTENT = {
   'eu-criteria': EuCriteria,
   'eu-compare': EuCompare,
   'eu-verdict': EuVerdict,
+  'eu-reflection': EuReflection,
 };

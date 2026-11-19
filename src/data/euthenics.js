@@ -232,3 +232,19 @@ export const sources = [
   { label: 'Research notes: Civicom careers page, LinkedIn job postings, Glassdoor and Jobstreet reviews, ISO 27001 press release' },
   { label: 'Research notes: Himalayas developer profile, Uratex website, Facebook posts and digitization blog' },
 ];
+
+// Requirement 4, Section 7: Reflection (250–300 words).
+export const reflection = {
+  question: 'How has preparing for Work Immersion helped me understand my career goals and future professional responsibilities?',
+  paragraphs: [
+    "Preparing for Work Immersion made me look back at what I have built, and the range of those projects showed me something important: I can adapt to anything a project asks of me.",
+    "On Ball-lalo, a freelance project, I helped move a restaurant's inventory, orders and reservations off paper and into a PHP and MySQL system with a GPT-4o-mini chatbot that answers customer questions. Adding AI taught me to watch new trends closely and turn them into something real users can rely on. It also sharpened my client communication, because every feature began with understanding what the client needed.",
+    "For Sassy Strands, I switched to React and Supabase to replace the client's Excel workbooks, enforcing five staff roles with row-level security. That project tested my problem solving as much as my database design. Each stack was new to me, and each time I learned it by building.",
+    "Game development stretched me even further. For Pagpag, our team was tasked to create a game focused on social issues, so we built a 2D survival game in Unity with C# set in a Filipino slum, where the player must last 365 days, land a steady job and get out. I believe my team delivered, because almost all of the issues we set out to show are tackled in the game.",
+    "Our capstone, STI-ALABANG 360, taught me teamwork on a larger scale. Two of us handled development while a three-member team handled documentation, and together we built a platform on Supabase and Vercel that unifies six roles: Student, Admin, Superuser, Front Desk, Guidance and Marketing. It showed me that my work only counts when it fits cleanly with everyone else's.",
+    "In studying AWS services such as S3 for storage, EC2 for servers, Lambda for serverless functions and RDS for managed databases, I have developed a real liking for cloud work, and pursuing it is a possibility. I have not deployed a project on AWS yet, but I am learning it the same way I learned React, Supabase and Unity.",
+    "Across these projects I have built hard skills in full-stack development, database design, role-based access, AI integration, cloud deployment and game development, along with soft skills in teamwork, client communication, problem solving and self-directed learning. I am still choosing between web development, cloud or network engineering, and information security, and I am making that choice deliberately. Whichever path I take, my responsibility stays the same: keep developing my skills, adapt quickly to new trends, and perform at my highest level so I stay ahead of my competitors. Before my immersion begins, I will have chosen the field where I believe I can use my skills most efficiently.",
+  ],
+  // The three paths I'm weighing (shown as satellites around the hologram).
+  paths: ['Web development', 'Cloud or network engineering', 'Information security'],
+};
