@@ -6,8 +6,9 @@ import { setState } from '../store.js';
 // Opening sequence (3D view only):
 //   black → a holo screen types out my name and "Take a look inside my
 //   portfolio" → the text turns into data particles that form a miniature of
-//   the globe hologram → it explodes, and its data collapses into the real
-//   globe as the room fades in.
+//   the globe hologram → it squeezes and explodes → the scattered data
+//   regroups into a full-size globe where the real one sits → the black lifts
+//   and the main-room hologram appears.
 // Drawn on a 2D canvas so it costs nothing on the GPU the 3D room is loading
 // on. Skip with the button, Esc, Enter, Space or a click.
 
@@ -19,8 +20,12 @@ const T = {
   hold: 800, // both lines typed, caret blinking
   compress: 2400, // the text surges apart into data → miniature hologram
   surge: 1200, // the miniature hologram runs (longer if the room isn't ready yet)
-  explode: 650, // the miniature bursts apart
-  collapse: 1300, // its data rushes into the real globe while the room fades in
+  squeeze: 450, // the miniature compresses tighter and brighter
+  explode: 700, // ...then bursts, scattering its data across the screen
+  drift: 300, // the scattered data hangs for a moment
+  gather: 1400, // ...then groups into a full-size globe where the real one sits
+  formed: 350, // the data globe holds
+  reveal: 800, // the black lifts and the real hologram takes over
 };
 const CYAN = [95, 216, 255];
 const HOT = [230, 251, 255];
@@ -211,36 +216,51 @@ export default function Intro({ sceneReady, onDone }) {
     const pitch = 0.18;
     const cp = Math.cos(pitch);
     const spP = Math.sin(pitch);
+    const clamp01 = (v) => Math.min(1, Math.max(0, v));
+    // The ending, after the miniature has formed (ms from its start):
+    const E1 = T.squeeze;
+    const E2 = E1 + T.explode;
+    const E3 = E2 + T.drift;
+    const E4 = E3 + T.gather;
+    const E5 = E4 + T.formed;
+    const E6 = E5 + T.reveal;
 
     const frame = (now) => {
       const t = now - t0;
       const sec = t / 1000;
-      let center = { x: cx, y: cy };
-      let radius = R0;
-      let alpha = 1;
-      let kx = 0; // explosion progress
-      let kc = 0; // collapse-into-the-globe progress
       const mix = Math.min(1, t / T.compress); // 0 = text, 1 = everything in the ball
 
+      // Ending progress: squeeze → explode → drift → gather into the globe → reveal.
+      let ks = 0;
+      let kx = 0;
+      let kd = 0;
+      let kg = 0;
+      let kr = 0;
       if (mix >= 1) {
         const surgeEnd = T.compress + T.surge;
-        // Hold the surge until the room is ready to receive the ball.
+        // Hold the miniature until the room is ready to take over.
         if (landStart == null && t >= surgeEnd && ready.current && hubScreen.ready) landStart = t;
         if (landStart == null && t > surgeEnd + 6000) landStart = t; // never wait forever
         if (landStart != null) {
-          // Explode, then collapse into the real globe as the black lifts.
           const lt = t - landStart;
-          kx = Math.min(1, lt / T.explode);
-          kc = Math.min(1, Math.max(0, (lt - T.explode * 0.6) / T.collapse));
-          alpha = 1 - kx; // the miniature's structure breaks up
-          if (rootRef.current) rootRef.current.style.setProperty('--veil', String(1 - ease(kc)));
-          if (kc >= 1) { finish(); return; }
+          ks = clamp01(lt / T.squeeze);
+          kx = clamp01((lt - E1) / T.explode);
+          kd = clamp01((lt - E2) / T.drift);
+          kg = clamp01((lt - E3) / T.gather);
+          kr = clamp01((lt - E5) / T.reveal);
+          if (rootRef.current) rootRef.current.style.setProperty('--veil', String(1 - ease(kr)));
+          if (lt >= E6) { finish(); return; }
         }
       }
 
-      // Motion trails while the data streams; clean frames while landing.
+      // The miniature: squeezes tighter before it bursts.
+      const center = { x: cx, y: cy };
+      const radius = R0 * (1 - 0.55 * ease(ks));
+      const hub = hubScreen.ready ? hubScreen : { x: cx, y: cy, r: R0 * 3 };
+
+      // Motion trails on black; clean frames once the room shows through.
       g.globalCompositeOperation = 'source-over';
-      if (kc <= 0) {
+      if (kr <= 0) {
         g.fillStyle = 'rgba(0, 0, 0, 0.3)';
         g.fillRect(0, 0, W, H);
       } else {
@@ -252,7 +272,7 @@ export default function Intro({ sceneReady, onDone }) {
       const spin = sec * 0.5;
       const cs = Math.cos(spin);
       const sn = Math.sin(spin);
-      const project = (p, fixed, c = center, rad = radius) => {
+      const project = (p, fixed, c, rad) => {
         let x = p[0];
         let z = p[2];
         if (!fixed) { const x2 = x * cs - z * sn; z = x * sn + z * cs; x = x2; }
@@ -261,34 +281,31 @@ export default function Intro({ sceneReady, onDone }) {
         return [c.x + x * rad, c.y - y * rad, z2];
       };
 
-      // 1. The miniature hologram's structure fades in as the data arrives.
-      const build = Math.min(1, Math.max(0, (mix - 0.55) / 0.45));
-      if (build > 0) {
-        const s = build * alpha;
-        // Halo and fresnel rim
-        const halo = g.createRadialGradient(center.x, center.y, radius * 0.7, center.x, center.y, radius * 1.35);
+      // The hologram's structure (halo, rim, grid, shell trails, rings, core),
+      // drawn for the miniature and again, full size, for the regrouped globe.
+      const drawStructure = (c, rad, s, glowBoost = 0) => {
+        if (s <= 0) return;
+        const halo = g.createRadialGradient(c.x, c.y, rad * 0.7, c.x, c.y, rad * 1.35);
         halo.addColorStop(0, 'rgba(42,169,224,0)');
         halo.addColorStop(0.55, `rgba(42,169,224,${0.22 * s})`);
         halo.addColorStop(1, 'rgba(42,169,224,0)');
         g.fillStyle = halo;
-        g.fillRect(center.x - radius * 1.4, center.y - radius * 1.4, radius * 2.8, radius * 2.8);
-        const rim = g.createRadialGradient(center.x, center.y, radius * 0.55, center.x, center.y, radius * 1.02);
+        g.fillRect(c.x - rad * 1.4, c.y - rad * 1.4, rad * 2.8, rad * 2.8);
+        const rim = g.createRadialGradient(c.x, c.y, rad * 0.55, c.x, c.y, rad * 1.02);
         rim.addColorStop(0, 'rgba(95,216,255,0)');
         rim.addColorStop(0.85, `rgba(95,216,255,${0.18 * s})`);
         rim.addColorStop(1, `rgba(160,235,255,${0.55 * s})`);
         g.fillStyle = rim;
-        g.beginPath(); g.arc(center.x, center.y, radius * 1.02, 0, Math.PI * 2); g.fill();
-        // Grid, shell trails and rings
+        g.beginPath(); g.arc(c.x, c.y, rad * 1.02, 0, Math.PI * 2); g.fill();
         g.lineWidth = 1;
         [...lines, ...rings].forEach((ln) => {
           let prev = null;
           for (let k = 0; k < ln.pts.length; k++) {
-            const q = project(ln.pts[k], ln.fixed);
+            const q = project(ln.pts[k], ln.fixed, c, rad);
             if (prev) {
               const front = 0.25 + 0.75 * (((prev[2] + q[2]) / 2 + 1) / 2);
               let a = ln.a * front * s;
               if (ln.trail) {
-                // A bright head runs along each trail, like the globe's data shell.
                 const f = (k / ln.pts.length * 2 - sec * 0.6 + ln.seed * 3) % 1;
                 a *= 0.35 + 1.4 * Math.pow((f + 1) % 1, 6);
               }
@@ -298,7 +315,19 @@ export default function Intro({ sceneReady, onDone }) {
             prev = q;
           }
         });
-      }
+        const pulse = 1 + 0.1 * Math.sin(sec * 2.4);
+        const core = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad * 0.55 * pulse);
+        core.addColorStop(0, `rgba(240,253,255,${Math.min(1, (0.9 + glowBoost) * s)})`);
+        core.addColorStop(0.12, `rgba(180,240,255,${Math.min(1, (0.55 + glowBoost) * s)})`);
+        core.addColorStop(1, 'rgba(95,216,255,0)');
+        g.fillStyle = core;
+        g.fillRect(c.x - rad, c.y - rad, rad * 2, rad * 2);
+      };
+
+      // 1. The miniature: fades in as the data arrives, glows hotter as it
+      //    squeezes, and breaks up in the explosion.
+      const build = clamp01((mix - 0.55) / 0.45);
+      drawStructure(center, radius, build * (1 - kx), ks * 0.6);
 
       // 2. The scan line sweeping the text, releasing it as data.
       if (mix < SWEEP + 0.05) {
@@ -311,33 +340,38 @@ export default function Intro({ sceneReady, onDone }) {
         g.fillRect(sx - 14, cy - H * 0.22, 28, H * 0.44);
       }
 
-      // 3. Every piece of text: solid until the scan passes, then a streak of
-      //    data spiralling in, then a particle surging inside the miniature.
-      g.lineCap = 'round';
+      // 3. The regrouped globe's structure takes shape as the data gathers.
+      drawStructure(hub, hub.r, ease(kg) * 0.9 * (1 - kr));
+
+      // 4. Every piece of text.
       for (let i = 0; i < n; i++) {
         const p = parts[i];
         if (mix < p.delay) {
+          // Still text; pieces about to be released glow cyan along the scan line.
           const near = p.delay - mix < 0.04;
           g.fillStyle = near ? 'rgba(160,240,255,1)' : 'rgba(230,251,255,0.95)';
           g.fillRect(p.sx, p.sy, p.px + 0.6, p.px + 0.6);
           continue;
         }
-        // Where it surges inside the ball (same motion as the globe's data surge).
+        // Its path in the data surge (same motion as inside the globe).
         const tt = (p.seed + sec * p.speed) % 1;
-        let r = 0.08 + 0.92 * Math.pow(tt, 0.7);
+        const r = 0.08 + 0.92 * Math.pow(tt, 0.7);
         const ang = r * 1.6 + sec * 0.35 + p.seed * 6.2831;
         const ca = Math.cos(ang);
         const sa = Math.sin(ang);
-        const dir = [p.ux * ca - p.uz * sa, p.uy, p.ux * sa + p.uz * ca];
+        const dir = [(p.ux * ca - p.uz * sa) * r, p.uy * r, (p.ux * sa + p.uz * ca) * r];
         const wave = Math.pow(0.5 + 0.5 * Math.sin(r * 7 - sec * 3.2 + p.seed * 2), 6);
         const edgeFade = Math.min(1, tt / 0.12) * Math.min(1, (1 - tt) / 0.18);
-        const [bx, by, bz] = project([dir[0] * r, dir[1] * r, dir[2] * r], true);
+        const [bx, by, bz] = project(dir, true, center, radius);
 
-        const lp = Math.min(1, (mix - p.delay) / FLY);
-        const e = ease(lp);
+        const e = ease(Math.min(1, (mix - p.delay) / FLY));
         let x;
         let y;
+        let size;
+        let a;
+        let hot;
         if (e < 1) {
+          // Flying in from the text as a data particle, spiralling.
           const ox = p.sx - cx;
           const oy = p.sy - cy;
           const sw = (1 - e) * p.swirl * e;
@@ -345,83 +379,70 @@ export default function Intro({ sceneReady, onDone }) {
           const ry = ox * Math.sin(sw) + oy * Math.cos(sw);
           x = cx + rx * (1 - e) + (bx - cx) * e;
           y = cy + ry * (1 - e) + (by - cy) * e;
-          // The piece has become a data particle: a glowing dot that shrinks
-          // from letter-pixel size to the size of the globe's surge points as
-          // it flies in, flashing bright the moment it breaks off.
           const flash = Math.pow(1 - e, 4);
-          const size = 1.4 + (p.px * 0.9 - 1.4) * (1 - e);
-          const pulse = 0.75 + 0.25 * Math.sin(sec * 9 + p.seed * 20);
-          const hot = Math.max(flash, 0.25 * pulse);
-          g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, (0.55 + 0.45 * flash) * alpha)})`;
-          g.fillRect(x - size / 2, y - size / 2, size, size);
-        } else if (landStart != null) {
-          // Burst outward from the miniature, then rush into the real globe,
-          // landing on the same surge path inside it.
+          size = 1.4 + (p.px * 0.9 - 1.4) * (1 - e);
+          hot = Math.max(flash, 0.25 * (0.75 + 0.25 * Math.sin(sec * 9 + p.seed * 20)));
+          a = 0.55 + 0.45 * flash;
+        } else if (kx <= 0) {
+          // Surging inside the miniature (squeezing in with it before the burst).
+          x = bx;
+          y = by;
+          const depth = 0.35 + 0.65 * ((bz + 1) / 2);
+          a = depth * edgeFade * (0.3 + 0.7 * wave) + ks * 0.3;
+          size = 0.9 + 1.6 * wave;
+          hot = Math.max(wave * 0.85, ks * 0.6);
+        } else {
+          // Exploded: burst outward, drift, then gather into the full-size globe.
           if (p.ex === undefined) {
             const dx = bx - cx;
             const dy = by - cy;
             const m = Math.hypot(dx, dy) || 1;
-            const j = (Math.random() - 0.5) * 0.9;
-            const dist = (0.35 + 0.8 * Math.random()) * Math.max(W, H) * 0.5;
+            const j = (Math.random() - 0.5) * 1.1;
+            const dist = (0.3 + 0.85 * Math.random()) * Math.max(W, H) * 0.55;
             const ux = dx / m;
             const uy = dy / m;
             p.ex = (ux * Math.cos(j) - uy * Math.sin(j)) * dist;
             p.ey = (ux * Math.sin(j) + uy * Math.cos(j)) * dist;
+            p.bx0 = bx;
+            p.by0 = by;
           }
-          const hub = hubScreen.ready ? hubScreen : { x: cx, y: cy, r: R0 * 3 };
-          const [tx, ty, tz] = project([dir[0] * r, dir[1] * r, dir[2] * r], true, hub, hub.r);
-          const out = 1 - Math.pow(1 - kx, 3);
-          const ex = bx + p.ex * out;
-          const ey = by + p.ey * out;
-          const kk = ease(kc);
-          x = ex + (tx - ex) * kk;
-          y = ey + (ty - ey) * kk;
+          const out = (1 - Math.pow(1 - kx, 3)) + 0.08 * kd;
+          const ex = p.bx0 + p.ex * out;
+          const ey = p.by0 + p.ey * out;
+          const [tx, ty, tz] = project(dir, true, hub, hub.r);
+          const kk = ease(kg);
+          // Gather along a curve so the regrouping swirls rather than lines up.
+          const sw = (1 - kk) * kk * 1.4;
+          const gx = ex - hub.x;
+          const gy = ey - hub.y;
+          const qx = hub.x + gx * Math.cos(sw) - gy * Math.sin(sw);
+          const qy = hub.y + gx * Math.sin(sw) + gy * Math.cos(sw);
+          x = qx + (tx - qx) * kk;
+          y = qy + (ty - qy) * kk;
           const depth = 0.35 + 0.65 * ((tz + 1) / 2);
-          const burst = kx * (1 - kc);
-          const a = (0.45 + 0.55 * burst) * (kc > 0 ? 0.6 + 0.4 * depth : 1)
-            * (1 - Math.max(0, (kc - 0.6) / 0.4));
-          const size = 1.2 + 1.8 * burst + 1.2 * wave * kk;
-          const hot = Math.max(burst * 0.7, wave * kk * 0.8);
-          g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, a)})`;
-          g.fillRect(x - size / 2, y - size / 2, size, size);
-        } else {
-          x = bx;
-          y = by;
-          const depth = 0.35 + 0.65 * ((bz + 1) / 2);
-          const a = alpha * depth * edgeFade * (0.3 + 0.7 * wave);
-          const size = 0.9 + 1.6 * wave;
-          const hot = wave * 0.85;
-          g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, a)})`;
-          g.fillRect(x - size / 2, y - size / 2, size, size);
+          const burst = kx * (1 - kg);
+          a = (0.5 + 0.5 * burst) * (kk > 0 ? 0.55 + 0.45 * depth * (0.4 + 0.6 * wave) : 1);
+          size = 1.2 + 1.6 * burst + 1.4 * wave * kk;
+          hot = Math.max(burst * 0.7, wave * kk * 0.8);
         }
-        p.lx = x;
-        p.ly = y;
+        const fade = 1 - ease(kr); // the real globe takes over
+        g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, a * fade)})`;
+        g.fillRect(x - size / 2, y - size / 2, size, size);
       }
 
-      // 4. The energy core, as at the centre of the globe.
-      if (build > 0) {
-        const pulse = 1 + 0.1 * Math.sin(sec * 2.4);
-        const core = g.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius * 0.55 * pulse);
-        core.addColorStop(0, `rgba(240,253,255,${0.9 * alpha * build})`);
-        core.addColorStop(0.12, `rgba(180,240,255,${0.55 * alpha * build})`);
-        core.addColorStop(1, 'rgba(95,216,255,0)');
-        g.fillStyle = core;
-        g.fillRect(center.x - radius, center.y - radius, radius * 2, radius * 2);
-      }
-
-      // The explosion's flash.
+      // 5. The explosion's flash.
       if (kx > 0 && kx < 1) {
         const fl = Math.sin(kx * Math.PI);
-        const fr = R0 * (1 + 3.5 * kx);
+        const fr = R0 * (0.6 + 4 * kx);
         const flash = g.createRadialGradient(cx, cy, 0, cx, cy, fr);
-        flash.addColorStop(0, `rgba(240,253,255,${0.85 * fl})`);
-        flash.addColorStop(0.3, `rgba(120,225,255,${0.35 * fl})`);
+        flash.addColorStop(0, `rgba(245,254,255,${0.95 * fl})`);
+        flash.addColorStop(0.25, `rgba(140,230,255,${0.45 * fl})`);
         flash.addColorStop(1, 'rgba(95,216,255,0)');
         g.fillStyle = flash;
         g.fillRect(cx - fr, cy - fr, fr * 2, fr * 2);
       }
 
-      // 5. A scan sweep across the finished miniature, like every navigation on the globe.
+      // 6. A scan sweep across the finished miniature, like every navigation on the globe.
       if (mix >= 1 && landStart == null) {
         const k = ((t - T.compress) / 900) % 1;
         const yy = center.y - radius + k * radius * 2;
