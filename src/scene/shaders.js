@@ -186,3 +186,53 @@ export const portalFragment = /* glsl */ `
     gl_FragColor = vec4(col, a);
   }
 `;
+
+// Data surge (main globe): particles stream out from the core to the shell
+// along twisting paths, in waves that pulse outward, so the globe reads as
+// knowledge surging inside it. Positions are computed on the GPU from a fixed
+// direction, seed and speed per particle: no per-frame CPU work.
+export const surgeVertex = /* glsl */ `
+  attribute vec3 aDir;
+  attribute float aSeed;
+  attribute float aSpeed;
+  uniform float uTime;
+  uniform float uSize;
+  uniform float uRadius;
+  uniform float uScan;
+  uniform float uCenterY;
+  uniform float uFlicker;
+  varying float vA;
+  varying float vHot;
+  varying float vScan;
+  void main() {
+    float t = fract(aSeed + uTime * aSpeed);
+    float r = uRadius * (0.08 + 0.92 * pow(t, 0.7));
+    float ang = r * 1.6 + uTime * 0.35 + aSeed * 6.2831;
+    float c = cos(ang), s = sin(ang);
+    vec3 d = vec3(aDir.x * c - aDir.z * s, aDir.y, aDir.x * s + aDir.z * c);
+    vec3 p = d * r;
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    vec3 wp = (modelMatrix * vec4(p, 1.0)).xyz;
+    float wave = pow(0.5 + 0.5 * sin(r * 7.0 - uTime * 3.2 + aSeed * 2.0), 6.0);
+    float edge = smoothstep(0.0, 0.12, t) * smoothstep(1.0, 0.82, t);
+    vScan = 1.0 - smoothstep(0.0, 0.16, abs(wp.y - uCenterY - uScan));
+    vHot = wave;
+    vA = edge * (0.25 + 0.75 * wave) * uFlicker;
+    gl_PointSize = uSize * (0.55 + 0.9 * wave) / -mv.z;
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+export const surgeFragment = /* glsl */ `
+  uniform vec3 uColor;
+  uniform vec3 uHot;
+  varying float vA;
+  varying float vHot;
+  varying float vScan;
+  void main() {
+    float d = length(gl_PointCoord - 0.5);
+    if (d > 0.5) discard;
+    float a = smoothstep(0.5, 0.05, d);
+    vec3 col = mix(uColor, uHot, clamp(vHot * 0.8 + vScan * 0.7, 0.0, 1.0));
+    gl_FragColor = vec4(col, a * (vA + vScan * 0.6));
+  }
+`;

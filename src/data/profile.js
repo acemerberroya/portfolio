@@ -153,7 +153,7 @@ export const projectDetails = {
     issuer: 'STI College Alabang',
     date: '2025 – Present',
     role: 'Developer',
-    team: '5 developers',
+    team: '2 developers, 3 documentation',
     adviser: 'Manuel Jojo Simon Jr.',
     summary:
       'A campus management portal that connects every department in one dashboard for the full student lifecycle, from admissions to career success.',
@@ -165,14 +165,14 @@ export const projectDetails = {
       problem:
         'Campus departments each handled their part of the student lifecycle separately. STI-360 brings admissions, guidance, front desk, marketing and student services into one portal.',
       features: [
-        { title: 'Role-based dashboards', description: 'Separate dashboards for Superuser, Admin, Front Desk, Guidance, Marketing, Students and exam takers.' },
+        { title: 'Role-based dashboards', description: 'Separate dashboards for Student, Admin, Superuser, Front Desk, Guidance and Marketing.' },
         { title: 'Online exam portal', description: 'A dedicated login and dashboard for applicants taking the entrance exam.' },
         { title: 'Assessment analysis', description: 'Server-side analysis of assessment results through a Supabase Edge Function.' },
         { title: 'Records archive', description: 'An archive vault for keeping older records out of the active system.' },
       ],
       outcomes: [
-        'Built by a team of 5 developers from architecture through deployment; live at sti-360.vercel.app.',
-        'Brought 4 departments into one portal with 7 role-based dashboards: Superuser, Admin, Front Desk, Guidance, Marketing, Student and Exam Taker.',
+        'Built by 2 developers and a 3-member documentation team, from architecture through deployment; live at sti-360.vercel.app.',
+        'Unified 6 roles in one platform: Student, Admin, Superuser, Front Desk, Guidance and Marketing.',
       ],
     },
   },

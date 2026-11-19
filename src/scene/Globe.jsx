@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import landDots from './landDots.json';
 import { HOME, HOME_PIN, SECTIONS } from '../sections.js';
 import { getState, setState, useStore } from '../store.js';
 import { AMBER, CYAN, GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
-import { dotsFragment, dotsVertex, fresnelFragment, fresnelVertex } from './shaders.js';
+import { fresnelFragment, fresnelVertex, surgeFragment, surgeVertex } from './shaders.js';
 import { useHub } from './hub.js';
 import { glowTexture } from './Room.jsx';
 import { buildTrails, useTrailMaterial } from './trails.js';
@@ -36,27 +35,42 @@ export function useFresnel(color, power, intensity, invert = 0) {
   );
 }
 
-function LandDots({ lite, uniforms }) {
+// Knowledge surging inside the globe: thousands of points streaming from the
+// core to the shell in outward waves (positions computed on the GPU).
+function DataSurge({ lite, uniforms }) {
   const geo = useMemo(() => {
-    const step = lite ? 2 : 1;
-    const pos = [];
+    const n = lite ? 1800 : 4200;
+    const dir = new Float32Array(n * 3);
+    const seed = new Float32Array(n);
+    const speed = new Float32Array(n);
+    const pos = new Float32Array(n * 3); // unused by the shader; keeps three.js happy
     const v = new THREE.Vector3();
-    for (let i = 0; i < landDots.length; i += 2 * step) {
-      latLngToVec3(landDots[i] / 10, landDots[i + 1] / 10, GLOBE_R * 1.002, v);
-      pos.push(v.x, v.y, v.z);
+    for (let i = 0; i < n; i++) {
+      // Bias directions into a handful of streams so the flow reads as currents.
+      const stream = i % 9;
+      const base = latLngToVec3(((stream * 47) % 140) - 70, stream * 40, 1, new THREE.Vector3());
+      v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      v.lerp(base, i % 3 === 0 ? 0 : 0.55).normalize();
+      dir.set([v.x, v.y, v.z], i * 3);
+      seed[i] = Math.random();
+      speed[i] = 0.08 + Math.random() * 0.14;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('aDir', new THREE.Float32BufferAttribute(dir, 3));
+    g.setAttribute('aSeed', new THREE.Float32BufferAttribute(seed, 1));
+    g.setAttribute('aSpeed', new THREE.Float32BufferAttribute(speed, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), GLOBE_R * 1.1);
     return g;
   }, [lite]);
   const mat = useMemo(
     () => new THREE.ShaderMaterial({
-      vertexShader: dotsVertex, fragmentShader: dotsFragment, uniforms,
+      vertexShader: surgeVertex, fragmentShader: surgeFragment, uniforms,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     }),
     [uniforms]
   );
-  return <points geometry={geo} material={mat} />;
+  return <points geometry={geo} material={mat} frustumCulled={false} />;
 }
 
 function Graticule() {
@@ -207,7 +221,8 @@ export default function Globe({ lite, reduced, go }) {
 
   const uniforms = useMemo(
     () => ({
-      uSize: { value: (lite ? 34 : 30) * Math.min(gl.getPixelRatio(), 2) },
+      uSize: { value: (lite ? 26 : 24) * Math.min(gl.getPixelRatio(), 2) },
+      uRadius: { value: GLOBE_R * 0.98 },
       uScan: { value: 9 },
       uCenterY: { value: GLOBE_Y },
       uColor: { value: new THREE.Color(CYAN) },
@@ -276,12 +291,12 @@ export default function Globe({ lite, reduced, go }) {
           <sphereGeometry args={[GLOBE_R * 1.01, 20, 14]} />
           <meshBasicMaterial color="#0a3a57" transparent opacity={0.16} depthWrite={false} />
         </mesh>
-        <LandDots lite={lite} uniforms={uniforms} />
         <Graticule />
         <lineSegments geometry={shellTrails.lines} material={trailMat} />
         {SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
       </group>
-      {/* Inner swirl and energy core */}
+      {/* Data surging from the core, the inner swirl, and the energy core */}
+      <DataSurge lite={lite} uniforms={uniforms} />
       <group ref={inner}>
         <lineSegments geometry={innerTrails.lines} material={trailMat} />
       </group>
