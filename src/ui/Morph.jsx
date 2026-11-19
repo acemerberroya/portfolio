@@ -4,7 +4,9 @@ import { hubScreen } from '../scene/bridge.js';
 import { getState, subscribe } from '../store.js';
 
 // The particle half of the hologram transformation (portfolio globe ⇄
-// Euthenics core). While the 3D hub is hidden this overlay takes its place:
+// Euthenics core). First the information panel breaks into data particles
+// that are sucked into the accelerating sphere. Then, while the 3D hub is
+// hidden, this overlay takes its place:
 //   the hologram, drawn as particles at the hub's exact spot and size,
 //   compresses → explodes with a flash → its particles scatter and hang for a
 //   second → they change colour (cyan ⇄ gold) → they gather and build the new
@@ -68,6 +70,48 @@ function buildStructure() {
   return lines;
 }
 
+// The panel as particles: points along every line of its text, plus its frame.
+function samplePanel(budget) {
+  const panel = document.querySelector('.panel');
+  if (!panel) return [];
+  const box = panel.getBoundingClientRect();
+  const rects = [];
+  const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent.trim()) continue;
+    range.selectNodeContents(node);
+    for (const r of range.getClientRects()) {
+      // Only what is actually visible inside the panel.
+      const top = Math.max(r.top, box.top);
+      const bottom = Math.min(r.bottom, box.bottom, window.innerHeight);
+      if (bottom - top < 2 || r.width < 2) continue;
+      rects.push({ x: r.left, y: top + (bottom - top) * 0.2, w: r.width, h: (bottom - top) * 0.6 });
+    }
+  }
+  const area = rects.reduce((sum, r) => sum + r.w * r.h, 0) || 1;
+  const pts = [];
+  const textBudget = budget * 0.8;
+  rects.forEach((r) => {
+    const n = Math.max(1, Math.round((r.w * r.h / area) * textBudget));
+    for (let i = 0; i < n; i++) pts.push([r.x + Math.random() * r.w, r.y + Math.random() * r.h, 1]);
+  });
+  // The panel's frame.
+  const per = 2 * (box.width + box.height);
+  const frameN = Math.round(budget * 0.2);
+  for (let i = 0; i < frameN; i++) {
+    let d = Math.random() * per;
+    let x;
+    let y;
+    if (d < box.width) { x = box.left + d; y = box.top; }
+    else if ((d -= box.width) < box.height) { x = box.right; y = box.top + d; }
+    else if ((d -= box.height) < box.width) { x = box.right - d; y = box.bottom; }
+    else { d -= box.width; x = box.left; y = box.bottom - d; }
+    pts.push([x, Math.min(y, window.innerHeight), 0]);
+  }
+  return pts.map(([x, y, text]) => ({ x, y, text, delay: Math.random() * 0.3, seed: Math.random(), swirl: 1.5 + Math.random() * 1.5 }));
+}
+
 export default function Morph({ lite }) {
   const canvasRef = useRef(null);
 
@@ -77,6 +121,7 @@ export default function Morph({ lite }) {
     let raf = null;
     let parts = null;
     let lines = null;
+    let panelParts = [];
 
     const pitch = 0.18;
     const cp = Math.cos(pitch);
@@ -107,13 +152,42 @@ export default function Morph({ lite }) {
       const W = window.innerWidth;
       const H = window.innerHeight;
       g.clearRect(0, 0, W, H);
-      if (!m || m.phase === 'accel' || !m.burstStart) { raf = null; return; }
+      if (!m) { raf = null; return; }
 
-      const t = now - m.burstStart; // ms into the burst
       const sec = now / 1000;
       const hub = hubScreen.ready ? hubScreen : { x: W / 2, y: H / 2, r: Math.min(W, H) * 0.3 };
       const from = COLORS[m.from] || COLORS.main;
       const to = COLORS[m.to] || COLORS.euthenics;
+
+      // The panel's particles, sucked into the sphere as it accelerates
+      // (pulled harder and harder, swirling, shrinking as they are absorbed).
+      if (panelParts.length) {
+        g.globalCompositeOperation = 'lighter';
+        const a = Math.min(1, (now - m.start) / MORPH.accel);
+        for (let i = 0; i < panelParts.length; i++) {
+          const p = panelParts[i];
+          const local = Math.min(1, Math.max(0, (a - p.delay) / (1 - p.delay)));
+          if (local >= 1) continue;
+          const e = local * local * local; // accelerating pull
+          const ox = p.x - hub.x;
+          const oy = p.y - hub.y;
+          const sw = e * p.swirl;
+          const rx = ox * Math.cos(sw) - oy * Math.sin(sw);
+          const ry = ox * Math.sin(sw) + oy * Math.cos(sw);
+          const x = hub.x + rx * (1 - e);
+          const y = hub.y + ry * (1 - e);
+          const flick = local < 0.08 ? 0.6 + 0.4 * Math.random() : 1;
+          const hot = Math.max(1 - local * 4, e);
+          const c = mixRGB(from.base, from.hot, Math.min(1, hot));
+          const size = (p.text ? 1.6 : 1.3) * (1 - 0.6 * e) + 0.5;
+          g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.85 * flick * (1 - e * 0.5)})`;
+          g.fillRect(x - size / 2, y - size / 2, size, size);
+        }
+        if (a >= 1 && m.phase !== 'accel') panelParts = [];
+      }
+      if (m.phase === 'accel' || !m.burstStart) { raf = requestAnimationFrame(frame); return; }
+
+      const t = now - m.burstStart; // ms into the burst
 
       const kc = ease(span(t, MORPH.compress));
       const kx = span(t, MORPH.explode);
@@ -255,11 +329,13 @@ export default function Morph({ lite }) {
       raf = requestAnimationFrame(frame);
     };
 
-    // Start drawing when a transformation reaches its burst.
+    // Start drawing as soon as a transformation begins: the panel is sampled
+    // into particles right away, before it fades.
     const unsub = subscribe(() => {
       const m = getState().morph;
-      if (m && m.phase === 'burst' && raf == null) {
+      if (m && raf == null && (m.phase === 'accel' || m.phase === 'burst')) {
         setup();
+        panelParts = m.phase === 'accel' ? samplePanel(lite ? 450 : 900) : [];
         raf = requestAnimationFrame(frame);
       }
     });

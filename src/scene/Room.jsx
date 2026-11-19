@@ -109,6 +109,9 @@ function Racks({ lite }) {
 // Colours of everything the hologram lights. The main room keeps its cyan;
 // the Euthenics room passes a gold theme so the same room reads as a sibling.
 export const CYAN_THEME = {
+  slit: '#2c6f8f', // light slits in the back-wall pillars
+  cove: '#3fb6e8', // floor cove lines
+  strip: '#cfe9ff', // ceiling light strips
   light: '#58d0ff',
   glowInner: 'rgba(120,220,255,0.9)',
   glowMid: 'rgba(60,170,230,0.28)',
@@ -116,6 +119,9 @@ export const CYAN_THEME = {
   disc: '#123548',
 };
 export const GOLD_THEME = {
+  slit: '#8f5a1e',
+  cove: '#e8a03f',
+  strip: '#ffe6c2',
   light: '#ffb34d',
   glowInner: 'rgba(255,200,110,0.9)',
   glowMid: 'rgba(230,140,40,0.28)',
@@ -138,6 +144,11 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
   const glowCyanRef = useRef();
   const glowGoldRef = useRef();
   const tmp = useMemo(() => ({ a: new THREE.Color(), b: new THREE.Color() }), []);
+  // The background lights (pillar slits, cove lines, ceiling strips) share
+  // one material each, so they follow the hologram's colour together.
+  const slitMat = useMemo(() => new THREE.MeshBasicMaterial({ color: CYAN_THEME.slit, toneMapped: false }), []);
+  const coveMat = useMemo(() => new THREE.MeshBasicMaterial({ color: CYAN_THEME.cove, toneMapped: false }), []);
+  const stripMat = useMemo(() => new THREE.MeshBasicMaterial({ color: CYAN_THEME.strip, toneMapped: false }), []);
   // Floor, walls and ceiling with the room's lighting baked into vertex colours.
   const surfaces = useMemo(() => {
     const lights = roomLights(CYAN_THEME.light);
@@ -171,6 +182,9 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
     if (lightRef.current) lightRef.current.color.copy(mixC(CYAN_THEME.light, GOLD_THEME.light));
     if (ringRef.current) ringRef.current.color.copy(mixC(CYAN_THEME.ring, GOLD_THEME.ring));
     if (discRef.current) discRef.current.color.copy(mixC(CYAN_THEME.disc, GOLD_THEME.disc));
+    slitMat.color.copy(mixC(CYAN_THEME.slit, GOLD_THEME.slit));
+    coveMat.color.copy(mixC(CYAN_THEME.cove, GOLD_THEME.cove));
+    stripMat.color.copy(mixC(CYAN_THEME.strip, GOLD_THEME.strip));
     const base = reduced ? 0.55 : 0.7;
     if (glowCyanRef.current) glowCyanRef.current.opacity = base * (1 - w);
     if (glowGoldRef.current) glowGoldRef.current.opacity = base * w;
@@ -227,28 +241,24 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
             <boxGeometry args={[0.7, CEIL_Y - FLOOR_Y, 0.7]} />
             <meshLambertMaterial color="#121820" />
           </mesh>
-          <mesh position={[0.6, 0, -0.3]}>
+          <mesh position={[0.6, 0, -0.3]} material={slitMat}>
             <planeGeometry args={[0.06, CEIL_Y - FLOOR_Y - 1.2]} />
-            <meshBasicMaterial color="#2c6f8f" toneMapped={false} />
           </mesh>
         </group>
       ))}
 
       {/* Ceiling light strips and floor cove lines */}
       {[-4.5, 0, 4.5].map((x) => (
-        <mesh key={x} position={[x, CEIL_Y - 0.02, -1]} rotation-x={Math.PI / 2}>
+        <mesh key={x} position={[x, CEIL_Y - 0.02, -1]} rotation-x={Math.PI / 2} material={stripMat}>
           <planeGeometry args={[0.18, 14]} />
-          <meshBasicMaterial color="#cfe9ff" toneMapped={false} />
         </mesh>
       ))}
-      <mesh position={[0, FLOOR_Y + 0.05, BACK_Z + 0.02]}>
+      <mesh position={[0, FLOOR_Y + 0.05, BACK_Z + 0.02]} material={coveMat}>
         <planeGeometry args={[SIDE_X * 2, 0.06]} />
-        <meshBasicMaterial color="#3fb6e8" toneMapped={false} />
       </mesh>
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (SIDE_X - 0.02), FLOOR_Y + 0.05, 1]} rotation-y={-s * Math.PI / 2}>
+        <mesh key={s} position={[s * (SIDE_X - 0.02), FLOOR_Y + 0.05, 1]} rotation-y={-s * Math.PI / 2} material={coveMat}>
           <planeGeometry args={[22, 0.06]} />
-          <meshBasicMaterial color="#3fb6e8" toneMapped={false} />
         </mesh>
       ))}
 

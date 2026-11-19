@@ -535,6 +535,10 @@ a.contact-value { color: var(--cyan); }
 .core-to-main { border-color: rgba(110, 215, 255, 0.75) !important; box-shadow: 0 0 14px rgba(95, 216, 255, 0.35); }
 .core-button:hover .bl-hint { opacity: 1; }
 /* Particle overlay: above the scene and panel, under the header, never takes clicks. */
+/* The panel breaks into particles (drawn by the overlay) as the transformation
+   starts, stays away through the burst, and returns with the new content. */
+.panel { transition: opacity 0.5s ease; }
+.morph-accel .panel, .morph-burst .panel { opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
 /* While the 3D hub is hidden, its floating labels hide with it. */
 .morph-burst .beacon-label, .morph-burst .sat-label { visibility: hidden !important; }
 .morph-canvas { position: fixed; inset: 0; z-index: 15; width: 100%; height: 100%; pointer-events: none; }
