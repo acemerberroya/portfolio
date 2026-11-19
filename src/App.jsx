@@ -40,8 +40,8 @@ export default function App() {
   // Transform the hologram into the other one (portfolio globe ⇄ Euthenics
   // core), landing on `target` (its home by default). The current hologram
   // accelerates, compresses, explodes and scatters; the particles change colour
-  // and gather into the new one (see morph.js and ui/Morph.jsx). The swap of
-  // sections and hub happens mid-scatter while the 3D hub is hidden.
+  // and gather into the new one (see morph.js and ui/Morph.jsx). Sections,
+  // hub, lighting and panel switch only when the new hologram settles.
   const switchRoom = useCallback(
     (to, target = ROOMS[to]?.homeId, { fromKeyboard = false } = {}) => {
       const s = getState();
@@ -60,8 +60,12 @@ export default function App() {
       setState({ morph: { to, from: s.room, phase: 'accel', start }, hover: null, hoverSection: null, pinHover: null });
       const at = (ms, fn) => timers.current.push(setTimeout(fn, ms));
       at(MORPH.accel, () => setState((st) => ({ morph: { ...st.morph, phase: 'burst', burstStart: performance.now() } })));
-      at(MORPH.accel + MORPH.swapAt, arrive);
-      at(MORPH.accel + MORPH.burst, () => setState((st) => ({ morph: { ...st.morph, phase: 'reveal', revealStart: performance.now() } })));
+      // The setting switches only once the new hologram settles: the swap and
+      // the reveal happen together, in one render.
+      at(MORPH.accel + MORPH.burst, () => {
+        arrive();
+        setState((st) => ({ morph: { ...st.morph, phase: 'reveal', revealStart: performance.now() } }));
+      });
       at(MORPH.accel + MORPH.burst + MORPH.reveal, () => setState({ morph: null }));
     },
     [env.reduced]

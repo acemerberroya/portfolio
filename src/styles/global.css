@@ -268,6 +268,16 @@ a.contact-value { color: var(--cyan); }
 .copy-button:hover { background: var(--cyan-soft); }
 .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 0.82rem; color: var(--ink-soft); padding-top: 8px; }
 
+/* Colour tokens are registered so the switch between the portfolio (cyan)
+   and Euthenics (gold) palettes fades instead of snapping. */
+@property --cyan { syntax: '<color>'; inherits: true; initial-value: #6fdcff; }
+@property --cyan-soft { syntax: '<color>'; inherits: true; initial-value: rgba(95, 216, 255, 0.12); }
+@property --amber { syntax: '<color>'; inherits: true; initial-value: #ffc56b; }
+@property --amber-soft { syntax: '<color>'; inherits: true; initial-value: rgba(255, 191, 90, 0.14); }
+@property --line { syntax: '<color>'; inherits: true; initial-value: rgba(140, 200, 240, 0.16); }
+@property --line-strong { syntax: '<color>'; inherits: true; initial-value: rgba(140, 210, 255, 0.34); }
+.app { transition: --cyan 0.9s ease, --cyan-soft 0.9s ease, --amber 0.9s ease, --amber-soft 0.9s ease, --line 0.9s ease, --line-strong 0.9s ease; }
+
 /* ---------- Euthenics room (Jarvis hologram) ----------
    Same components as the main room. The room swaps the cyan tokens for gold,
    so nav, links, buttons, borders and labels follow without new rules, then

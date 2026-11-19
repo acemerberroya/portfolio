@@ -69,6 +69,7 @@ function Rig({ hub, reduced }) {
   return null;
 }
 
+// The projector beam; blends to its new colour when the hologram changes.
 function Beam({ reduced, lite, color = CYAN }) {
   const mat = useMemo(
     () => new THREE.ShaderMaterial({
@@ -76,9 +77,14 @@ function Beam({ reduced, lite, color = CYAN }) {
       uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 } },
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     }),
-    [color]
+    []
   );
-  useFrame((s) => { if (!reduced) mat.uniforms.uTime.value = s.clock.elapsedTime; });
+  const goal = useMemo(() => new THREE.Color(), []);
+  useFrame((s, delta) => {
+    if (!reduced) mat.uniforms.uTime.value = s.clock.elapsedTime;
+    goal.set(color);
+    mat.uniforms.uColor.value.lerp(goal, reduced ? 1 : damp(2.6, Math.min(delta, 0.05)));
+  });
   const bottom = -2.17;
   const height = GLOBE_Y - bottom;
   return (

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ledFragment, ledVertex } from './shaders.js';
 import { bakedPlane, roomLights } from './bake.js';
+import { damp } from './geo.js';
 
 const FLOOR_Y = -3.2;
 const CEIL_Y = 6;
@@ -125,10 +126,22 @@ export const GOLD_THEME = {
 export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
   const wallTex = useMemo(() => panelTexture({ base: '#1a222c', seam: '#0e141b', cols: 3, rows: 2, repeat: [4, 2] }), []);
   const floorTex = useMemo(() => panelTexture({ base: '#141a22', seam: '#0a0e13', cols: 4, rows: 4, noise: 10, repeat: [6, 6] }), []);
-  const glow = useMemo(() => glowTexture(theme.glowInner, theme.glowMid), [theme]);
+  // Both lightings are prepared up front, so a change of hologram can blend the
+  // room from one to the other instead of snapping (warm = 0 cyan, 1 gold).
+  const glowCyan = useMemo(() => glowTexture(CYAN_THEME.glowInner, CYAN_THEME.glowMid), []);
+  const glowGold = useMemo(() => glowTexture(GOLD_THEME.glowInner, GOLD_THEME.glowMid), []);
+  const target = theme === GOLD_THEME ? 1 : 0;
+  const warm = useRef(target);
+  const lightRef = useRef();
+  const ringRef = useRef();
+  const discRef = useRef();
+  const glowCyanRef = useRef();
+  const glowGoldRef = useRef();
+  const tmp = useMemo(() => ({ a: new THREE.Color(), b: new THREE.Color() }), []);
   // Floor, walls and ceiling with the room's lighting baked into vertex colours.
   const surfaces = useMemo(() => {
-    const lights = roomLights(theme.light);
+    const lights = roomLights(CYAN_THEME.light);
+    const lightsGold = roomLights(GOLD_THEME.light);
     const midY = (FLOOR_Y + CEIL_Y) / 2;
     const H = CEIL_Y - FLOOR_Y;
     const list = [
@@ -140,8 +153,39 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
       { key: 'ceiling', width: SIDE_X * 2, height: 22, segX: 22, segY: 22, position: [0, CEIL_Y, 1], rotation: [Math.PI / 2, 0, 0], color: '#0b0f14' },
       { key: 'front', width: SIDE_X * 2, height: H, segX: 22, segY: 9, position: [0, midY, 12], rotation: [0, Math.PI, 0], map: wallTex },
     ];
-    return list.map((sf) => ({ ...sf, color: sf.color || '#ffffff', geometry: bakedPlane({ ...sf, lights }) }));
-  }, [theme, floorTex, wallTex]);
+    return list.map((sf) => {
+      const geometry = bakedPlane({ ...sf, lights });
+      const cyan = geometry.attributes.color.array.slice();
+      const gold = bakedPlane({ ...sf, lights: lightsGold }).attributes.color.array;
+      return { ...sf, color: sf.color || '#ffffff', geometry, cyan, gold };
+    });
+  }, [floorTex, wallTex]);
+
+  const apply = (w) => {
+    surfaces.forEach((sf) => {
+      const out = sf.geometry.attributes.color.array;
+      for (let i = 0; i < out.length; i++) out[i] = sf.cyan[i] + (sf.gold[i] - sf.cyan[i]) * w;
+      sf.geometry.attributes.color.needsUpdate = true;
+    });
+    const mixC = (a, b) => tmp.a.set(a).lerp(tmp.b.set(b), w);
+    if (lightRef.current) lightRef.current.color.copy(mixC(CYAN_THEME.light, GOLD_THEME.light));
+    if (ringRef.current) ringRef.current.color.copy(mixC(CYAN_THEME.ring, GOLD_THEME.ring));
+    if (discRef.current) discRef.current.color.copy(mixC(CYAN_THEME.disc, GOLD_THEME.disc));
+    const base = reduced ? 0.55 : 0.7;
+    if (glowCyanRef.current) glowCyanRef.current.opacity = base * (1 - w);
+    if (glowGoldRef.current) glowGoldRef.current.opacity = base * w;
+  };
+  const applied = useRef(-1);
+  useFrame((state, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const w = warm.current;
+    const next = reduced ? target : w + (target - w) * damp(2.6, dt);
+    warm.current = Math.abs(target - next) < 0.002 ? target : next;
+    if (warm.current !== applied.current) {
+      applied.current = warm.current;
+      apply(warm.current);
+    }
+  });
   const pillars = useMemo(() => {
     const xs = lite ? [-8, 8] : [-9, -5, 5, 9];
     return xs;
@@ -158,7 +202,7 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
       {/* Soft key light from above and in front */}
       <directionalLight position={[3, 7, 6]} intensity={0.8} color="#fff1dc" />
       {/* The hologram lights the room */}
-      <pointLight position={[0, 0.35, 0]} color={theme.light} intensity={38} distance={18} decay={1.6} />
+      <pointLight ref={lightRef} position={[0, 0.35, 0]} color={CYAN_THEME.light} intensity={38} distance={18} decay={1.6} />
 
       {/* Floor, walls and ceiling: the same lighting, baked once (see bake.js). */}
       {surfaces.map((sf) => (
@@ -169,7 +213,11 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
       {/* Hologram light pooled on the floor */}
       <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y + 0.01, 0]}>
         <planeGeometry args={[9, 9]} />
-        <meshBasicMaterial map={glow} transparent opacity={reduced ? 0.55 : 0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <meshBasicMaterial ref={glowCyanRef} map={glowCyan} transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y + 0.011, 0]}>
+        <planeGeometry args={[9, 9]} />
+        <meshBasicMaterial ref={glowGoldRef} map={glowGold} transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
 
       {/* Back-wall pillars with recessed light slits for depth */}
@@ -214,11 +262,11 @@ export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
         </mesh>
         <mesh position={[0, 1.02, 0]} rotation-x={-Math.PI / 2}>
           <ringGeometry args={[0.6, 0.68, 64]} />
-          <meshBasicMaterial color={theme.ring} toneMapped={false} />
+          <meshBasicMaterial ref={ringRef} color={CYAN_THEME.ring} toneMapped={false} />
         </mesh>
         <mesh position={[0, 1.03, 0]} rotation-x={-Math.PI / 2}>
           <circleGeometry args={[0.6, 32]} />
-          <meshBasicMaterial color={theme.disc} />
+          <meshBasicMaterial ref={discRef} color={CYAN_THEME.disc} />
         </mesh>
       </group>
       {children}
