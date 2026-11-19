@@ -5,9 +5,9 @@ import { setState } from '../store.js';
 
 // Opening sequence (3D view only):
 //   black → a holo screen types out my name and "Take a look inside my
-//   portfolio" → the letters break into data
-//   particles that spiral into a ball → the ball surges like the globe's data
-//   → it flies onto the globe and the room fades in underneath.
+//   portfolio" → the text turns into data particles that form a miniature of
+//   the globe hologram → it explodes, and its data collapses into the real
+//   globe as the room fades in.
 // Drawn on a 2D canvas so it costs nothing on the GPU the 3D room is loading
 // on. Skip with the button, Esc, Enter, Space or a click.
 
@@ -19,7 +19,8 @@ const T = {
   hold: 800, // both lines typed, caret blinking
   compress: 2400, // the text surges apart into data → miniature hologram
   surge: 1200, // the miniature hologram runs (longer if the room isn't ready yet)
-  land: 1100, // ball flies onto the globe, overlay fades
+  explode: 650, // the miniature bursts apart
+  collapse: 1300, // its data rushes into the real globe while the room fades in
 };
 const CYAN = [95, 216, 255];
 const HOT = [230, 251, 255];
@@ -207,7 +208,6 @@ export default function Intro({ sceneReady, onDone }) {
     let raf;
     const t0 = performance.now();
     let landStart = null;
-    const from = { x: cx, y: cy, r: R0 };
     const pitch = 0.18;
     const cp = Math.cos(pitch);
     const spP = Math.sin(pitch);
@@ -218,6 +218,8 @@ export default function Intro({ sceneReady, onDone }) {
       let center = { x: cx, y: cy };
       let radius = R0;
       let alpha = 1;
+      let kx = 0; // explosion progress
+      let kc = 0; // collapse-into-the-globe progress
       const mix = Math.min(1, t / T.compress); // 0 = text, 1 = everything in the ball
 
       if (mix >= 1) {
@@ -226,19 +228,19 @@ export default function Intro({ sceneReady, onDone }) {
         if (landStart == null && t >= surgeEnd && ready.current && hubScreen.ready) landStart = t;
         if (landStart == null && t > surgeEnd + 6000) landStart = t; // never wait forever
         if (landStart != null) {
-          const k = ease(Math.min(1, (t - landStart) / T.land));
-          const to = hubScreen.ready ? hubScreen : { x: cx, y: cy, r: R0 * 3 };
-          center = { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k };
-          radius = from.r + (to.r - from.r) * k;
-          alpha = 1 - Math.max(0, (k - 0.35) / 0.65);
-          if (rootRef.current) rootRef.current.style.setProperty('--veil', String(1 - k));
-          if (k >= 1) { finish(); return; }
+          // Explode, then collapse into the real globe as the black lifts.
+          const lt = t - landStart;
+          kx = Math.min(1, lt / T.explode);
+          kc = Math.min(1, Math.max(0, (lt - T.explode * 0.6) / T.collapse));
+          alpha = 1 - kx; // the miniature's structure breaks up
+          if (rootRef.current) rootRef.current.style.setProperty('--veil', String(1 - ease(kc)));
+          if (kc >= 1) { finish(); return; }
         }
       }
 
       // Motion trails while the data streams; clean frames while landing.
       g.globalCompositeOperation = 'source-over';
-      if (landStart == null) {
+      if (kc <= 0) {
         g.fillStyle = 'rgba(0, 0, 0, 0.3)';
         g.fillRect(0, 0, W, H);
       } else {
@@ -250,13 +252,13 @@ export default function Intro({ sceneReady, onDone }) {
       const spin = sec * 0.5;
       const cs = Math.cos(spin);
       const sn = Math.sin(spin);
-      const project = (p, fixed) => {
+      const project = (p, fixed, c = center, rad = radius) => {
         let x = p[0];
         let z = p[2];
         if (!fixed) { const x2 = x * cs - z * sn; z = x * sn + z * cs; x = x2; }
         const y = p[1] * cp - z * spP;
         const z2 = p[1] * spP + z * cp;
-        return [center.x + x * radius, center.y - y * radius, z2];
+        return [c.x + x * rad, c.y - y * rad, z2];
       };
 
       // 1. The miniature hologram's structure fades in as the data arrives.
@@ -352,6 +354,36 @@ export default function Intro({ sceneReady, onDone }) {
           const hot = Math.max(flash, 0.25 * pulse);
           g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, (0.55 + 0.45 * flash) * alpha)})`;
           g.fillRect(x - size / 2, y - size / 2, size, size);
+        } else if (landStart != null) {
+          // Burst outward from the miniature, then rush into the real globe,
+          // landing on the same surge path inside it.
+          if (p.ex === undefined) {
+            const dx = bx - cx;
+            const dy = by - cy;
+            const m = Math.hypot(dx, dy) || 1;
+            const j = (Math.random() - 0.5) * 0.9;
+            const dist = (0.35 + 0.8 * Math.random()) * Math.max(W, H) * 0.5;
+            const ux = dx / m;
+            const uy = dy / m;
+            p.ex = (ux * Math.cos(j) - uy * Math.sin(j)) * dist;
+            p.ey = (ux * Math.sin(j) + uy * Math.cos(j)) * dist;
+          }
+          const hub = hubScreen.ready ? hubScreen : { x: cx, y: cy, r: R0 * 3 };
+          const [tx, ty, tz] = project([dir[0] * r, dir[1] * r, dir[2] * r], true, hub, hub.r);
+          const out = 1 - Math.pow(1 - kx, 3);
+          const ex = bx + p.ex * out;
+          const ey = by + p.ey * out;
+          const kk = ease(kc);
+          x = ex + (tx - ex) * kk;
+          y = ey + (ty - ey) * kk;
+          const depth = 0.35 + 0.65 * ((tz + 1) / 2);
+          const burst = kx * (1 - kc);
+          const a = (0.45 + 0.55 * burst) * (kc > 0 ? 0.6 + 0.4 * depth : 1)
+            * (1 - Math.max(0, (kc - 0.6) / 0.4));
+          const size = 1.2 + 1.8 * burst + 1.2 * wave * kk;
+          const hot = Math.max(burst * 0.7, wave * kk * 0.8);
+          g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, a)})`;
+          g.fillRect(x - size / 2, y - size / 2, size, size);
         } else {
           x = bx;
           y = by;
@@ -375,6 +407,18 @@ export default function Intro({ sceneReady, onDone }) {
         core.addColorStop(1, 'rgba(95,216,255,0)');
         g.fillStyle = core;
         g.fillRect(center.x - radius, center.y - radius, radius * 2, radius * 2);
+      }
+
+      // The explosion's flash.
+      if (kx > 0 && kx < 1) {
+        const fl = Math.sin(kx * Math.PI);
+        const fr = R0 * (1 + 3.5 * kx);
+        const flash = g.createRadialGradient(cx, cy, 0, cx, cy, fr);
+        flash.addColorStop(0, `rgba(240,253,255,${0.85 * fl})`);
+        flash.addColorStop(0.3, `rgba(120,225,255,${0.35 * fl})`);
+        flash.addColorStop(1, 'rgba(95,216,255,0)');
+        g.fillStyle = flash;
+        g.fillRect(cx - fr, cy - fr, fr * 2, fr * 2);
       }
 
       // 5. A scan sweep across the finished miniature, like every navigation on the globe.
