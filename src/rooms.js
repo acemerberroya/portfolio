@@ -1,12 +1,12 @@
 import { ALL, HOME, HOME_PIN, SECTIONS, satellitesFor } from './sections.js';
 import { EU_ALL, EU_HOME, EU_HOME_PIN, EU_SECTIONS, euSatellitesFor } from './sectionsEuthenics.js';
 
-// The two rooms share one interaction model. Everything that differs between
-// them (sections, home, where the hub faces, satellites, colours) lives here.
+// The two holograms (portfolio globe and Euthenics core) share one
+// interaction model and one room. Everything that differs between them (sections, home, where the hub faces, satellites, colours) lives here.
 export const ROOMS = {
   main: {
     id: 'main',
-    label: 'Main room',
+    label: 'Portfolio',
     all: ALL,
     sections: SECTIONS,
     homeId: HOME.id,
@@ -16,7 +16,7 @@ export const ROOMS = {
   },
   euthenics: {
     id: 'euthenics',
-    label: 'Euthenics room',
+    label: 'Euthenics',
     all: EU_ALL,
     sections: EU_SECTIONS,
     homeId: EU_HOME.id,

@@ -517,6 +517,18 @@ a.contact-value { color: var(--cyan); }
 }
 .intro-skip:hover { background: rgba(95, 216, 255, 0.15); }
 
+/* ---------- Hologram transformation ---------- */
+/* The core's button: borrows the beacon label, glows in the colour it turns into. */
+.core-button { padding: 6px 14px; font-size: 12.5px; letter-spacing: 0.04em; }
+.core-to-euthenics { border-color: rgba(255, 191, 90, 0.75); box-shadow: 0 0 14px rgba(255, 170, 60, 0.35); }
+.core-to-euthenics:hover { background: rgba(40, 24, 6, 0.95); border-color: #ffc56b; }
+.core-to-main { border-color: rgba(110, 215, 255, 0.75) !important; box-shadow: 0 0 14px rgba(95, 216, 255, 0.35); }
+.core-button:hover .bl-hint { opacity: 1; }
+/* Particle overlay: above the scene and panel, under the header, never takes clicks. */
+/* While the 3D hub is hidden, its floating labels hide with it. */
+.morph-burst .beacon-label, .morph-burst .sat-label { visibility: hidden !important; }
+.morph-canvas { position: fixed; inset: 0; z-index: 15; width: 100%; height: 100%; pointer-events: none; }
+
 /* ---------- Page view (also the no-WebGL fallback) ---------- */
 .is-page { background: radial-gradient(circle at 50% 0%, rgba(80, 200, 255, 0.12), transparent 50%); min-height: 100vh; }
 .page-view { max-width: 860px; margin: 0 auto; padding: calc(var(--header-h) + 32px) 20px 60px; display: grid; gap: 56px; }

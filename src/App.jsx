@@ -2,7 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import Header from './ui/Header.jsx';
 import Panel from './ui/Panel.jsx';
 import PageView from './ui/PageView.jsx';
-import Warp from './ui/Warp.jsx';
+import Morph from './ui/Morph.jsx';
+import { MORPH } from './morph.js';
 import Intro from './ui/Intro.jsx';
 import useEnv, { useRemembered } from './hooks/useEnv.js';
 import { ALL_IDS, ROOMS, roomOf } from './rooms.js';
@@ -11,10 +12,6 @@ import { getState, setState, useStore } from './store.js';
 // three.js and the scene load in their own chunk, after the content has painted.
 const Scene = lazy(() => import('./scene/Scene.jsx'));
 
-// Door transition timing: the camera dollies into the door while the screen
-// fills with light (OUT), the room swaps, then the new room fades in (IN).
-const OUT_MS = 650;
-const IN_MS = 750;
 
 const fromHash = () => {
   const h = window.location.hash.replace('#', '');
@@ -32,6 +29,7 @@ export default function App() {
   const use3D = env.webgl && mode === '3d';
   const section = useStore((s) => s.section);
   const room = useStore((s) => s.room);
+  const morphPhase = useStore((s) => s.morph?.phase || null);
   const focusHeading = useRef(false);
   const [sceneReady, setSceneReady] = useState(false);
   // The intro plays once per page load in the 3D view (not with reduced motion).
@@ -39,24 +37,32 @@ export default function App() {
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Walk through the door to another room, landing on `target` (its home by default).
+  // Transform the hologram into the other one (portfolio globe ⇄ Euthenics
+  // core), landing on `target` (its home by default). The current hologram
+  // accelerates, compresses, explodes and scatters; the particles change colour
+  // and gather into the new one (see morph.js and ui/Morph.jsx). The swap of
+  // sections and hub happens mid-scatter while the 3D hub is hidden.
   const switchRoom = useCallback(
     (to, target = ROOMS[to]?.homeId, { fromKeyboard = false } = {}) => {
       const s = getState();
-      if (!ROOMS[to] || s.warp) return;
+      if (!ROOMS[to] || s.morph) return;
       const arrive = () => {
         focusHeading.current = fromKeyboard;
         setState((st) => ({
           room: to, section: target, focus: null, hover: null, hoverSection: null, pinHover: null,
-          warp: env.reduced ? null : 'in', pulse: st.pulse + 1,
+          pulse: st.pulse + 1,
         }));
         history.replaceState(null, '', target === 'top' ? window.location.pathname : `#${target}`);
-        if (!env.reduced) timers.current.push(setTimeout(() => setState({ warp: null }), IN_MS));
       };
       document.body.style.cursor = '';
       if (env.reduced || s.room === to) { arrive(); return; }
-      setState({ warp: 'out', warpTo: to, hover: null, hoverSection: null, pinHover: null, doorHover: false });
-      timers.current.push(setTimeout(arrive, OUT_MS));
+      const start = performance.now();
+      setState({ morph: { to, from: s.room, phase: 'accel', start }, hover: null, hoverSection: null, pinHover: null });
+      const at = (ms, fn) => timers.current.push(setTimeout(fn, ms));
+      at(MORPH.accel, () => setState((st) => ({ morph: { ...st.morph, phase: 'burst', burstStart: performance.now() } })));
+      at(MORPH.accel + MORPH.swapAt, arrive);
+      at(MORPH.accel + MORPH.burst, () => setState((st) => ({ morph: { ...st.morph, phase: 'reveal', revealStart: performance.now() } })));
+      at(MORPH.accel + MORPH.burst + MORPH.reveal, () => setState({ morph: null }));
     },
     [env.reduced]
   );
@@ -65,7 +71,7 @@ export default function App() {
   // the other room goes through the door first.
   const go = useCallback(
     (id, focus = null, { fromKeyboard = true } = {}) => {
-      if (!ALL_IDS.includes(id)) return;
+      if (!ALL_IDS.includes(id) || getState().morph) return;
       if (use3D && roomOf(id) !== getState().room) {
         switchRoom(roomOf(id), id, { fromKeyboard });
         return;
@@ -120,7 +126,7 @@ export default function App() {
     const onKey = (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
       const s = getState();
-      if (s.warp || s.intro) return;
+      if (s.morph || s.intro) return;
       const r = ROOMS[s.room];
       const ids = r.all.map((x) => x.id);
       const i = ids.indexOf(s.section);
@@ -134,7 +140,7 @@ export default function App() {
   }, [use3D, go, switchRoom]);
 
   return (
-    <div className={`app ${use3D ? 'is-3d' : 'is-page'} ${sceneReady ? 'scene-ready' : ''} ${use3D ? `room-${room}` : ''}`}>
+    <div className={`app ${use3D ? 'is-3d' : 'is-page'} ${sceneReady ? 'scene-ready' : ''} ${use3D ? `room-${room}` : ''} ${morphPhase ? `morph-${morphPhase}` : ''}`}>
       <a className="skip-link" href="#main">Skip to content</a>
       <Header
         section={section}
@@ -160,7 +166,7 @@ export default function App() {
               : 'The background is an interactive holographic globe. Every section is also available from the navigation above and the panel below.'}
           </p>
           <Panel section={section} room={room} go={go} switchRoom={switchRoom} focusHeading={focusHeading} />
-          <Warp />
+          <Morph lite={env.tier === 'lite'} />
           {showIntro && <Intro sceneReady={sceneReady} onDone={() => setShowIntro(false)} />}
         </>
       ) : (

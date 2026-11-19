@@ -46,23 +46,25 @@ All text lives in **`src/data/profile.js`**.
 | Scan sweep | Runs across the globe on every navigation. |
 | Keyboard | Tab through the nav; ← / → move between sections; Esc returns home. |
 
-## Euthenics room
+## Euthenics hologram
 
-A glowing door on the back wall (left of the globe) leads to a second room that presents my
-Euthenics 2 HTE evaluation (Requirement 4, Section 6) as a Jarvis-style gold hologram. It works
-exactly like the globe: beacons open sections, the open section's items orbit as satellites,
-the hologram turns to face the open section with a scan sweep, and the same panel shows the
-content. Esc, the panel's × and the step links behave the same way.
+The portfolio globe can transform into a gold core that presents my Euthenics 2 work (the HTE
+evaluation and the reflection paper). Press **Euthenics** at the globe's core: the globe speeds
+up, compresses, explodes, its particles hang for a second, turn orange, and gather into the
+Euthenics hologram. **Portfolio** at the gold core (or Esc on its overview) transforms it back.
+Both holograms share the same room and the same interaction model: beacons, orbiting
+satellites, the panel, Esc, the × button and the step links all work the same way.
 
 | Way in or out | |
 | --- | --- |
-| Door | Click it in either room (hover lights it and shows where it leads). |
-| Header | **Euthenics** / **← Main room** button (inside the nav row on phones). |
-| Keyboard | Esc on the Euthenics overview returns to the main room. |
-| Panel | "Euthenics room →" after Contact; "← Main room" on the Euthenics overview. |
+| Core button | **Euthenics** at the globe's core, **Portfolio** at the gold core. |
+| Header | **Euthenics** / **← Portfolio** button (inside the nav row on phones). |
+| Keyboard | Esc on the Euthenics overview transforms back. |
+| Panel | "Euthenics →" after Contact; "← Portfolio" on the Euthenics overview. |
 
 **Edit the content in `src/data/euthenics.js`.** Section names, beacon positions and
-satellites are in `src/sectionsEuthenics.js`; `src/rooms.js` ties the two rooms together.
+satellites are in `src/sectionsEuthenics.js`; `src/rooms.js` ties the two holograms together;
+`src/morph.js` holds the transformation's timing and `src/ui/Morph.jsx` draws its particles.
 In Page view the Euthenics sections follow the main portfolio.
 
 ## Performance and fallbacks

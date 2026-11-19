@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { getState, useStore } from '../store.js';
 import { angleDelta, damp, faceAngles } from './geo.js';
+import { MORPH } from '../morph.js';
+
+// 0 → 1 over the transformation's acceleration phase (0 otherwise).
+export function morphRamp() {
+  const m = getState().morph;
+  if (!m || m.phase !== 'accel') return 0;
+  return Math.min(1, (performance.now() - m.start) / MORPH.accel);
+}
 
 // The motion every holographic hub shares (the globe in the main room, the
 // Jarvis hologram in the Euthenics room):
@@ -9,9 +17,13 @@ import { angleDelta, damp, faceAngles } from './geo.js';
 //  - runs the scan sweep (uniforms.uScan) on every navigation,
 //  - spins slowly, pauses while a beacon or scene satellite is hovered,
 //  - can be dragged, with a little inertia.
-// Spread `bind` on the hub's grab mesh and put its body inside `spin`.
+//  - speeds up, spin and data alike, as a transformation begins.
+// Spread `bind` on the hub's grab mesh and put its body inside `spin`. Use the
+// returned `time` (seconds) instead of the clock for animated uniforms, so the
+// hub's data surges faster when it accelerates.
 export function useHub({ sections, homePin, homeId, reduced, uniforms }) {
   const spin = useRef();
+  const time = useRef(0);
   const { invalidate } = useThree();
   const start = useMemo(() => faceAngles(homePin.lat, homePin.lng), [homePin]);
   const st = useRef({
@@ -74,7 +86,14 @@ export function useHub({ sections, homePin, homeId, reduced, uniforms }) {
     const dt = Math.min(delta, 0.05);
     const s = st.current;
     const g = getState();
-    const frozen = g.pinHover || (g.hover && g.hoverFrom === 'scene');
+    // Transformation: spin and data rate climb steeply through the acceleration.
+    const ramp = morphRamp();
+    time.current += dt * (1 + 9 * ramp * ramp);
+    if (ramp > 0) {
+      s.tYaw = null;
+      s.yaw += dt * 10 * ramp * ramp;
+    }
+    const frozen = ramp === 0 && (g.pinHover || (g.hover && g.hoverFrom === 'scene'));
     if (!s.drag && !frozen) {
       if (s.tYaw != null) {
         const k = reduced ? 1 : damp(2.4, dt);
@@ -106,5 +125,5 @@ export function useHub({ sections, homePin, homeId, reduced, uniforms }) {
     onPointerOut: () => { if (!st.current.drag && !getState().hoverSection) document.body.style.cursor = ''; },
   };
 
-  return { spin, st, bind };
+  return { spin, st, bind, time };
 }

@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import Room, { GOLD_THEME } from './Room.jsx';
 import Globe from './Globe.jsx';
 import Hologram, { GOLD } from './Hologram.jsx';
-import Door, { DOOR } from './Door.jsx';
 import HoloPaper from './HoloPaper.jsx';
 import Satellites from './Satellites.jsx';
 import { CYAN, GLOBE_R, GLOBE_Y, damp } from './geo.js';
@@ -15,15 +14,13 @@ import { ROOMS, isRoomHome } from '../rooms.js';
 import { hubScreen } from './bridge.js';
 
 const CAM = { x: 0, y: 0.9, z: 7.4, fov: 42 };
-const DOOR_V = new THREE.Vector3(DOOR.x, DOOR.y, DOOR.z);
 const HUB_V = new THREE.Vector3();
 
 // Keeps the globe centred in whatever the panel leaves visible, and shrinks the
 // hub to fit narrow screens. Adds a little pointer parallax when motion is allowed.
 function Rig({ hub, reduced }) {
   const { camera, size } = useThree();
-  const cur = useRef({ x: 0, y: 0, s: 1, px: 0, py: 0, first: true, w: 0, warp: null });
-  const look = useMemo(() => new THREE.Vector3(), []);
+  const cur = useRef({ x: 0, y: 0, s: 1, px: 0, py: 0, first: true });
   const header = useRef(64);
   useEffect(() => {
     header.current = document.querySelector('.site-header')?.offsetHeight || 64;
@@ -58,20 +55,8 @@ function Rig({ hub, reduced }) {
       c.py += (state.pointer.y * 0.18 - c.py) * damp(2, dt);
     }
 
-    // Door transition: on 'out' the camera dollies toward the door; when the
-    // new room appears ('in') it starts further back and glides to rest.
-    const { warp } = getState();
-    if (warp !== c.warp) {
-      if (warp === 'in' && !reduced) c.w = -0.9;
-      c.warp = warp;
-    }
-    const wt = warp === 'out' && !reduced ? 1 : 0;
-    c.w += (wt - c.w) * (reduced ? 1 : damp(warp === 'out' ? 2.8 : 2.2, dt));
-    const fwd = Math.max(c.w, 0);
-    const dz = fwd > 0 ? fwd * fwd * 6 : c.w * 2.4;
-    camera.position.set(CAM.x + c.px + DOOR.x * fwd * 0.35, CAM.y + c.py - fwd * 0.5, CAM.z - dz);
-    look.set(0, 0.15, 0).lerp(DOOR_V, fwd * 0.75);
-    camera.lookAt(look);
+    camera.position.set(CAM.x + c.px, CAM.y + c.py, CAM.z);
+    camera.lookAt(0, 0.15, 0);
 
     // Tell the intro where the globe is on screen (it lands its ball there).
     camera.updateMatrixWorld();
@@ -118,6 +103,9 @@ export default function Scene({ env, go, switchRoom, onReady }) {
   const { reduced } = env;
   const hub = useRef();
   const room = useStore((s) => s.room);
+  // During the transformation's burst the 3D hub hides and the particle
+  // overlay takes over (see ui/Morph.jsx).
+  const hubHidden = useStore((s) => s.morph?.phase === 'burst');
   const eu = ROOMS.euthenics;
   // Start at a moderate resolution; step up only when frames come in fast,
   // and down to 1 as soon as they don't.
@@ -147,19 +135,11 @@ export default function Scene({ env, go, switchRoom, onReady }) {
       <Invalidator reduced={reduced} />
       <Rig hub={hub} reduced={reduced} />
       {room === 'euthenics' ? (
-        // The Euthenics room: same room, gold-lit, with the Jarvis hologram as its hub.
+        // The Euthenics hologram: the same room, lit gold by the gold core.
         <>
           <Room lite={lite} reduced={reduced} theme={GOLD_THEME} />
-          <Door
-            label="Main room"
-            hint="Back to the holo globe"
-            frame={GOLD}
-            portal={CYAN}
-            reduced={reduced}
-            onEnter={() => switchRoom('main')}
-          />
-          <group ref={hub} position={[0, GLOBE_Y, 0]}>
-            <Hologram lite={lite} reduced={reduced} go={go} />
+          <group ref={hub} position={[0, GLOBE_Y, 0]} visible={!hubHidden}>
+            <Hologram lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} />
             <Satellites reduced={reduced} itemsFor={eu.satellitesFor} palette={eu.palette} />
             {/* The reflection, as a folded holographic paper in front of the core */}
             <HoloPaper go={go} reduced={reduced} position={[1.7, -1.4, 2.0]} rotation={[-0.08, -0.35, 0]} />
@@ -169,16 +149,8 @@ export default function Scene({ env, go, switchRoom, onReady }) {
       ) : (
         <>
           <Room lite={lite} reduced={reduced} />
-          <Door
-            label="Euthenics"
-            hint="Enter the HTE evaluation room"
-            frame="#3fb6e8"
-            portal={GOLD}
-            reduced={reduced}
-            onEnter={() => switchRoom('euthenics')}
-          />
-          <group ref={hub} position={[0, GLOBE_Y, 0]}>
-            <Globe lite={lite} reduced={reduced} go={go} />
+          <group ref={hub} position={[0, GLOBE_Y, 0]} visible={!hubHidden}>
+            <Globe lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} />
             <Satellites reduced={reduced} />
           </group>
           <Beam reduced={reduced} lite={lite} />

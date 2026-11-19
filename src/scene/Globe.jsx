@@ -6,7 +6,7 @@ import { HOME, HOME_PIN, SECTIONS } from '../sections.js';
 import { getState, setState, useStore } from '../store.js';
 import { AMBER, CYAN, GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
 import { fresnelFragment, fresnelVertex, surgeFragment, surgeVertex } from './shaders.js';
-import { useHub } from './hub.js';
+import { morphRamp, useHub } from './hub.js';
 import { glowTexture } from './Room.jsx';
 import { buildTrails, useTrailMaterial } from './trails.js';
 
@@ -215,7 +215,7 @@ export function Beacon({ sec, st, go, homePin = HOME_PIN, homeId = HOME.id, pale
   );
 }
 
-export default function Globe({ lite, reduced, go }) {
+export default function Globe({ lite, reduced, go, switchRoom }) {
   const rings = useRef();
   const { gl } = useThree();
 
@@ -239,7 +239,9 @@ export default function Globe({ lite, reduced, go }) {
   );
 
   // Facing, scan sweep, spin and drag are shared with the Euthenics hologram.
-  const { spin, st, bind } = useHub({ sections: SECTIONS, homePin: HOME_PIN, homeId: HOME.id, reduced, uniforms });
+  const { spin, st, bind, time } = useHub({ sections: SECTIONS, homePin: HOME_PIN, homeId: HOME.id, reduced, uniforms });
+  const reveal = useRef(1);
+  const morphing = useStore((s) => s.morph != null);
 
   // A thin shell of data trails hugging the surface (turns with the map) and a
   // looser swirl inside it (turns on its own), around a pulsing energy core.
@@ -265,12 +267,17 @@ export default function Globe({ lite, reduced, go }) {
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    const t = state.clock.elapsedTime;
+    const t = time.current;
     if (!reduced) uniforms.uTime.value = t;
+    // After a transformation the trails switch back on strand by strand.
+    if (getState().morph?.phase === 'burst') reveal.current = 0;
+    else if (reveal.current < 1) reveal.current = reduced ? 1 : Math.min(1, reveal.current + dt / 1.2);
+    uniforms.uReveal.value = reveal.current;
+    const ramp = morphRamp();
     // Every navigation sends a flare through the core and trails (rides the scan sweep).
     const sc = st.current.scan;
     const flare = reduced || sc >= 1 ? 0 : Math.sin(sc * Math.PI);
-    uniforms.uFlicker.value = 1 + flare * 1.2;
+    uniforms.uFlicker.value = (1 + flare * 1.2) * (1 + ramp * 1.5);
     if (glowMat.current) glowMat.current.opacity = 0.35 + flare * 0.45;
     if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.1 * Math.sin(t * 2.4)) * (1 + flare * 0.7));
     if (reduced) return;
@@ -295,6 +302,22 @@ export default function Globe({ lite, reduced, go }) {
         <lineSegments geometry={shellTrails.lines} material={trailMat} />
         {SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
       </group>
+      {/* The core's button: transforms this hologram into the Euthenics one */}
+      {!morphing && switchRoom && (
+        <Html position={[0, -0.5, 0]} center zIndexRange={[5, 0]}>
+          <div
+            className="beacon-label core-button core-to-euthenics"
+            onClick={(e) => { e.stopPropagation(); switchRoom('euthenics'); }}
+            onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+            onPointerLeave={() => { document.body.style.cursor = ''; }}
+            aria-hidden="true"
+          >
+            <span className="bl-name">Euthenics</span>
+            <span className="bl-hint">Transform the hologram</span>
+          </div>
+        </Html>
+      )}
+
       {/* Data surging from the core, the inner swirl, and the energy core */}
       <DataSurge lite={lite} uniforms={uniforms} />
       <group ref={inner}>

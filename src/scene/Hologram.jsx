@@ -1,11 +1,13 @@
 import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { companies, recommendation } from '../data/euthenics.js';
 import { ROOMS } from '../rooms.js';
 import { GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
 import { Beacon, useFresnel } from './Globe.jsx';
-import { useHub } from './hub.js';
+import { morphRamp, useHub } from './hub.js';
+import { getState, useStore } from '../store.js';
 import { glowTexture } from './Room.jsx';
 import { dotsFragment, dotsVertex } from './shaders.js';
 import { buildConduits, buildTrails, useTrailMaterial } from './trails.js';
@@ -54,7 +56,7 @@ function Orbit({ o, reduced }) {
   );
 }
 
-export default function Hologram({ lite, reduced, go }) {
+export default function Hologram({ lite, reduced, go, switchRoom }) {
   const { gl } = useThree();
   const rings = useRef();
   const core = useRef();
@@ -79,7 +81,8 @@ export default function Hologram({ lite, reduced, go }) {
     [lite, gl]
   );
 
-  const { spin, st, bind } = useHub({
+  const morphing = useStore((s) => s.morph != null);
+  const { spin, st, bind, time } = useHub({
     sections: ROOM.sections, homePin: ROOM.homePin, homeId: ROOM.homeId, reduced, uniforms,
   });
 
@@ -111,8 +114,11 @@ export default function Hologram({ lite, reduced, go }) {
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    const t = state.clock.elapsedTime;
+    const t = time.current;
     if (!reduced) uniforms.uTime.value = t;
+    // Hidden during a transformation's burst: build again strand by strand once shown.
+    if (getState().morph?.phase === 'burst') reveal.current = 0;
+    const ramp = morphRamp();
     // Staged reveal: strands switch on by seed over the first ~1.6 s, with a
     // projector flicker that settles once the projection is complete.
     if (reveal.current < 1) {
@@ -127,7 +133,7 @@ export default function Hologram({ lite, reduced, go }) {
       : reveal.current < 1
         ? 0.55 + 0.45 * Math.abs(Math.sin(t * 37.0) * Math.sin(t * 13.0))
         : 0.94 + 0.06 * Math.sin(t * 23.0) * Math.sin(t * 7.0);
-    uniforms.uFlicker.value = flicker * (1 + flare * 0.9);
+    uniforms.uFlicker.value = flicker * (1 + flare * 0.9) * (1 + ramp * 1.5);
     if (glowMat.current) glowMat.current.opacity = 0.4 + flare * 0.45;
     if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.08 * Math.sin(t * 2.2)) * (1 + flare * 0.6));
     if (reduced) return;
@@ -161,6 +167,22 @@ export default function Hologram({ lite, reduced, go }) {
           />
         ))}
       </group>
+
+      {/* The core's button: transforms back into the portfolio globe */}
+      {!morphing && switchRoom && (
+        <Html position={[0, -0.5, 0]} center zIndexRange={[5, 0]}>
+          <div
+            className="beacon-label core-button core-to-main"
+            onClick={(e) => { e.stopPropagation(); switchRoom('main'); }}
+            onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+            onPointerLeave={() => { document.body.style.cursor = ''; }}
+            aria-hidden="true"
+          >
+            <span className="bl-name">Portfolio</span>
+            <span className="bl-hint">Transform back</span>
+          </div>
+        </Html>
+      )}
 
       {/* The three company orbits around the core */}
       {ORBITS.map((o) => <Orbit key={o.id} o={o} reduced={reduced} />)}

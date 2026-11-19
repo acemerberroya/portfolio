@@ -15,7 +15,7 @@ export default function Panel({ section, room = 'main', go, switchRoom, focusHea
   const i = ALL.findIndex((s) => s.id === section);
   const prev = ALL[i - 1];
   const next = ALL[i + 1];
-  // At the ends of a room's sequence, the step links lead through the door.
+  // At the ends of a sequence, the step links transform the hologram.
   const toRoom = (to) => (e) => { e.preventDefault(); switchRoom(to, undefined, { fromKeyboard: true }); };
 
   useLayoutEffect(() => {
@@ -61,12 +61,12 @@ export default function Panel({ section, room = 'main', go, switchRoom, focusHea
         {prev ? (
           <a href={`#${prev.id}`} onClick={(e) => { e.preventDefault(); go(prev.id); }}>← {prev.label}</a>
         ) : room !== 'main' ? (
-          <a href="#top" onClick={toRoom('main')}>← Main room</a>
+          <a href="#top" onClick={toRoom('main')}>← Portfolio</a>
         ) : <span />}
         {next ? (
           <a href={`#${next.id}`} onClick={(e) => { e.preventDefault(); go(next.id); }}>{next.label} →</a>
         ) : room === 'main' && (
-          <a href={`#${ROOMS.euthenics.homeId}`} onClick={toRoom('euthenics')}>Euthenics room →</a>
+          <a href={`#${ROOMS.euthenics.homeId}`} onClick={toRoom('euthenics')}>Euthenics →</a>
         )}
       </nav>
     </div>

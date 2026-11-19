@@ -13,10 +13,8 @@ let state = {
   pinHover: null, // beacon under the pointer on the globe itself: freezes the globe
   inset: { x: 0, y: 0 }, // px the panel covers, so the camera can recentre the globe
   pulse: 0, // bumps on every navigation; drives the globe's scan sweep
-  room: 'main', // 'main' (holo globe) or 'euthenics' (Jarvis hologram)
-  warp: null, // door transition phase: 'out' (leaving a room), 'in' (arriving), or null
-  warpTo: null, // the room the door transition is heading to (colours the overlay)
-  doorHover: false, // pointer is on a door: lights it and its label
+  room: 'main', // which hologram is up: 'main' (portfolio globe) or 'euthenics' (gold core)
+  morph: null, // hologram transformation in progress: { to, from, phase, start, burstStart } (see morph.js)
   intro: false, // the opening sequence is playing (keyboard shortcuts wait)
 };
 

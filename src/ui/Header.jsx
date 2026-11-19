@@ -10,7 +10,7 @@ export default function Header({ section, go, mode, setMode, webgl, room = 'main
     if (!use3D) { go(ROOMS.euthenics.homeId); return; }
     switchRoom(inEuthenics ? 'main' : 'euthenics', undefined, { fromKeyboard: true });
   };
-  const roomLabel = inEuthenics ? '← Main room' : 'Euthenics';
+  const roomLabel = inEuthenics ? '← Portfolio' : 'Euthenics';
   return (
     <header className="site-header">
       <a className="brand" href="#top" onClick={(e) => { e.preventDefault(); go('top'); }}>
@@ -39,7 +39,7 @@ export default function Header({ section, go, mode, setMode, webgl, room = 'main
           </li>
         </ul>
       </nav>
-      {/* The keyboard path through the door (the 3D door is a mouse/touch shortcut). */}
+      {/* The keyboard path to the transformation (the core's button is the mouse/touch shortcut). */}
       <button
         type="button"
         className="view-toggle room-toggle"
