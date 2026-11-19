@@ -18,7 +18,7 @@ const T = {
   lineGap: 300, // pause before the second line
   typeChar2: 42, // per letter of the second line (types faster)
   hold: 800, // both lines typed, caret blinking
-  compress: 2400, // the text surges apart into data → miniature hologram
+  compress: 1900, // the text turns into data particles → miniature hologram
   surge: 1200, // the miniature hologram runs (longer if the room isn't ready yet)
   squeeze: 450, // the miniature compresses tighter and brighter
   explode: 700, // ...then bursts, scattering its data across the screen
@@ -134,11 +134,7 @@ export default function Intro({ sceneReady, onDone }) {
     const cy = H / 2;
     const R0 = Math.min(W, H) * 0.13;
     const golden = Math.PI * (3 - Math.sqrt(5));
-    let minX = Infinity;
-    let maxX = -Infinity;
-    starts.forEach(([x]) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); });
-    const SWEEP = 0.5; // share of the compress phase the scan line takes to cross the text
-    const FLY = 0.5; // share each piece spends streaming into the ball
+    const FLY = 0.6; // share of the compress phase each piece spends flying into the ball
 
     const parts = starts.map(([x, y, step], i) => {
       const yy = 1 - (i / Math.max(n - 1, 1)) * 2;
@@ -149,8 +145,8 @@ export default function Intro({ sceneReady, onDone }) {
         ux: Math.cos(th) * rr, uy: yy, uz: Math.sin(th) * rr,
         seed: Math.random(),
         speed: 0.08 + Math.random() * 0.14,
-        // The scan line releases each piece as it passes over it.
-        delay: SWEEP * ((x - minX) / Math.max(maxX - minX, 1)) + Math.random() * 0.03,
+        // The whole text turns into data at once (a slight scatter in timing).
+        delay: Math.random() * 0.12,
         swirl: 2.4 + Math.random() * 1.6,
       };
     });
@@ -329,17 +325,6 @@ export default function Intro({ sceneReady, onDone }) {
       const build = clamp01((mix - 0.55) / 0.45);
       drawStructure(center, radius, build * (1 - kx), ks * 0.6);
 
-      // 2. The scan line sweeping the text, releasing it as data.
-      if (mix < SWEEP + 0.05) {
-        const sx = minX + (Math.min(mix, SWEEP) / SWEEP) * (maxX - minX);
-        const grad = g.createLinearGradient(sx - 14, 0, sx + 14, 0);
-        grad.addColorStop(0, 'rgba(95,216,255,0)');
-        grad.addColorStop(0.5, 'rgba(230,251,255,0.85)');
-        grad.addColorStop(1, 'rgba(95,216,255,0)');
-        g.fillStyle = grad;
-        g.fillRect(sx - 14, cy - H * 0.22, 28, H * 0.44);
-      }
-
       // 3. The regrouped globe's structure takes shape as the data gathers.
       drawStructure(hub, hub.r, ease(kg) * 0.9 * (1 - kr));
 
@@ -347,8 +332,8 @@ export default function Intro({ sceneReady, onDone }) {
       for (let i = 0; i < n; i++) {
         const p = parts[i];
         if (mix < p.delay) {
-          // Still text; pieces about to be released glow cyan along the scan line.
-          const near = p.delay - mix < 0.04;
+          // Still text for a split second, flickering cyan as it turns to data.
+          const near = Math.random() < mix / Math.max(p.delay, 0.01);
           g.fillStyle = near ? 'rgba(160,240,255,1)' : 'rgba(230,251,255,0.95)';
           g.fillRect(p.sx, p.sy, p.px + 0.6, p.px + 0.6);
           continue;
