@@ -56,7 +56,7 @@ function Orbit({ o, reduced }) {
   );
 }
 
-export default function Hologram({ lite, reduced, go, switchRoom }) {
+export default function Hologram({ lite, reduced, go, switchRoom, active = true }) {
   const { gl } = useThree();
   const rings = useRef();
   const core = useRef();
@@ -66,7 +66,7 @@ export default function Hologram({ lite, reduced, go, switchRoom }) {
   // Same uniform names as the globe's dots, so the shared hub drives the scan sweep.
   const uniforms = useMemo(
     () => ({
-      uSize: { value: (lite ? 22 : 20) * Math.min(gl.getPixelRatio(), 2) },
+      uSize: { value: (lite ? 22 : 20) * Math.min(gl.getPixelRatio(), 2) }, // zeroed while the hub is inactive (see below)
       uScan: { value: 9 },
       uCenterY: { value: GLOBE_Y },
       uColor: { value: new THREE.Color(GOLD) },
@@ -80,6 +80,7 @@ export default function Hologram({ lite, reduced, go, switchRoom }) {
     }),
     [lite, gl]
   );
+  const baseSize = useMemo(() => uniforms.uSize.value, [uniforms]);
 
   const morphing = useStore((s) => s.morph != null);
   const { spin, st, bind, time } = useHub({
@@ -133,7 +134,9 @@ export default function Hologram({ lite, reduced, go, switchRoom }) {
       : reveal.current < 1
         ? 0.55 + 0.45 * Math.abs(Math.sin(t * 37.0) * Math.sin(t * 13.0))
         : 0.94 + 0.06 * Math.sin(t * 23.0) * Math.sin(t * 7.0);
-    uniforms.uFlicker.value = flicker * (1 + flare * 0.9) * (1 + ramp * 1.5);
+    uniforms.uFlicker.value = active ? flicker * (1 + flare * 0.9) * (1 + ramp * 1.5) : 0;
+    // Inactive (mounted early, tiny, so its shaders compile behind the transformation): draw nothing visible.
+    uniforms.uSize.value = active ? baseSize : 0;
     if (glowMat.current) glowMat.current.opacity = 0.4 + flare * 0.45;
     if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.08 * Math.sin(t * 2.2)) * (1 + flare * 0.6));
     if (reduced) return;
@@ -155,7 +158,7 @@ export default function Hologram({ lite, reduced, go, switchRoom }) {
         <lineSegments geometry={geo.lines} material={trailMat} />
         <lineSegments geometry={conduits} material={trailMat} />
         <points geometry={geo.points} material={sparkMat} />
-        {ROOM.sections.map((sec) => (
+        {active && ROOM.sections.map((sec) => (
           <Beacon
             key={sec.id}
             sec={sec}
@@ -169,7 +172,7 @@ export default function Hologram({ lite, reduced, go, switchRoom }) {
       </group>
 
       {/* The core's button: transforms back into the portfolio globe */}
-      {!morphing && switchRoom && (
+      {active && !morphing && switchRoom && (
         <Html position={[0, -0.5, 0]} center zIndexRange={[5, 0]}>
           <div
             className="beacon-label core-button core-to-main"

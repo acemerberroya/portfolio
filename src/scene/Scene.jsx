@@ -111,7 +111,13 @@ export default function Scene({ env, go, switchRoom, onReady }) {
   const room = useStore((s) => s.room);
   // During the transformation's burst the 3D hub hides and the particle
   // overlay takes over (see ui/Morph.jsx).
-  const hubHidden = useStore((s) => s.morph?.phase === 'burst');
+  const morphPhase = useStore((s) => s.morph?.phase || null);
+  const hubHidden = morphPhase === 'burst';
+  // Both holograms stay mounted from the start; the inactive one is shrunk to
+  // nothing and draws nothing visible. Its geometry and shaders are ready
+  // when the page loads, so a transformation never stalls building it.
+  const isMounted = () => true;
+  const isActive = (id) => room === id && !hubHidden;
   const eu = ROOMS.euthenics;
   // Start at a moderate resolution; step up only when frames come in fast,
   // and down to 1 as soon as they don't.
@@ -140,28 +146,30 @@ export default function Scene({ env, go, switchRoom, onReady }) {
       />
       <Invalidator reduced={reduced} />
       <Rig hub={hub} reduced={reduced} />
-      {room === 'euthenics' ? (
-        // The Euthenics hologram: the same room, lit gold by the gold core.
-        <>
-          <Room lite={lite} reduced={reduced} theme={GOLD_THEME} />
-          <group ref={hub} position={[0, GLOBE_Y, 0]} visible={!hubHidden}>
-            <Hologram lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} />
-            <Satellites reduced={reduced} itemsFor={eu.satellitesFor} palette={eu.palette} />
-            {/* The reflection, as a folded holographic paper in front of the core */}
-            <HoloPaper go={go} reduced={reduced} position={[1.7, -1.4, 2.0]} rotation={[-0.08, -0.35, 0]} />
+      {/* One room for both holograms; its lighting follows the active one. */}
+      <Room lite={lite} reduced={reduced} theme={room === 'euthenics' ? GOLD_THEME : undefined} />
+      <group ref={hub} position={[0, GLOBE_Y, 0]}>
+        {isMounted('main') && (
+          <group scale={isActive('main') ? 1 : 0.0001}>
+            <Globe lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} active={isActive('main')} />
+            {isActive('main') && <Satellites reduced={reduced} />}
           </group>
-          <Beam reduced={reduced} lite={lite} color={GOLD} />
-        </>
-      ) : (
-        <>
-          <Room lite={lite} reduced={reduced} />
-          <group ref={hub} position={[0, GLOBE_Y, 0]} visible={!hubHidden}>
-            <Globe lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} />
-            <Satellites reduced={reduced} />
+        )}
+        {isMounted('euthenics') && (
+          // The Euthenics hologram: the gold core, with its reflection paper.
+          <group scale={isActive('euthenics') ? 1 : 0.0001}>
+            <Hologram lite={lite} reduced={reduced} go={go} switchRoom={switchRoom} active={isActive('euthenics')} />
+            {isActive('euthenics') && (
+              <>
+                <Satellites reduced={reduced} itemsFor={eu.satellitesFor} palette={eu.palette} />
+                {/* The reflection, as a folded holographic paper in front of the core */}
+                <HoloPaper go={go} reduced={reduced} position={[1.7, -1.4, 2.0]} rotation={[-0.08, -0.35, 0]} />
+              </>
+            )}
           </group>
-          <Beam reduced={reduced} lite={lite} />
-        </>
-      )}
+        )}
+      </group>
+      <Beam reduced={reduced} lite={lite} color={room === 'euthenics' ? GOLD : CYAN} />
     </Canvas>
   );
 }

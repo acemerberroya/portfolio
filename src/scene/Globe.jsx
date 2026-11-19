@@ -215,13 +215,13 @@ export function Beacon({ sec, st, go, homePin = HOME_PIN, homeId = HOME.id, pale
   );
 }
 
-export default function Globe({ lite, reduced, go, switchRoom }) {
+export default function Globe({ lite, reduced, go, switchRoom, active = true }) {
   const rings = useRef();
   const { gl } = useThree();
 
   const uniforms = useMemo(
     () => ({
-      uSize: { value: (lite ? 26 : 24) * Math.min(gl.getPixelRatio(), 2) },
+      uSize: { value: (lite ? 26 : 24) * Math.min(gl.getPixelRatio(), 2) }, // zeroed while the hub is inactive (see below)
       uRadius: { value: GLOBE_R * 0.98 },
       uScan: { value: 9 },
       uCenterY: { value: GLOBE_Y },
@@ -237,6 +237,7 @@ export default function Globe({ lite, reduced, go, switchRoom }) {
     }),
     [lite, gl]
   );
+  const baseSize = useMemo(() => uniforms.uSize.value, [uniforms]);
 
   // Facing, scan sweep, spin and drag are shared with the Euthenics hologram.
   const { spin, st, bind, time } = useHub({ sections: SECTIONS, homePin: HOME_PIN, homeId: HOME.id, reduced, uniforms });
@@ -277,7 +278,9 @@ export default function Globe({ lite, reduced, go, switchRoom }) {
     // Every navigation sends a flare through the core and trails (rides the scan sweep).
     const sc = st.current.scan;
     const flare = reduced || sc >= 1 ? 0 : Math.sin(sc * Math.PI);
-    uniforms.uFlicker.value = (1 + flare * 1.2) * (1 + ramp * 1.5);
+    uniforms.uFlicker.value = active ? (1 + flare * 1.2) * (1 + ramp * 1.5) : 0;
+    // Inactive (mounted early, tiny, so its shaders compile behind the transformation): draw nothing visible.
+    uniforms.uSize.value = active ? baseSize : 0;
     if (glowMat.current) glowMat.current.opacity = 0.35 + flare * 0.45;
     if (core.current) core.current.scale.setScalar((reduced ? 1 : 1 + 0.1 * Math.sin(t * 2.4)) * (1 + flare * 0.7));
     if (reduced) return;
@@ -300,10 +303,10 @@ export default function Globe({ lite, reduced, go, switchRoom }) {
         </mesh>
         <Graticule />
         <lineSegments geometry={shellTrails.lines} material={trailMat} />
-        {SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
+        {active && SECTIONS.map((sec) => <Beacon key={sec.id} sec={sec} st={st} go={go} />)}
       </group>
       {/* The core's button: transforms this hologram into the Euthenics one */}
-      {!morphing && switchRoom && (
+      {active && !morphing && switchRoom && (
         <Html position={[0, -0.5, 0]} center zIndexRange={[5, 0]}>
           <div
             className="beacon-label core-button core-to-euthenics"

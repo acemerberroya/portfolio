@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { profile } from '../data/profile.js';
 import { hubScreen } from '../scene/bridge.js';
 import { setState } from '../store.js';
+import { makeLineBatch, makeRectBatch, mixQ, q, qa, rgba } from './canvasBatch.js';
 
 // Opening sequence (3D view only):
 //   black → a holo screen types out my name and "Take a look inside my
@@ -121,7 +122,12 @@ export default function Intro({ sceneReady, onDone }) {
     if (phase !== 'particles') return undefined;
     const canvas = canvasRef.current;
     const g = canvas.getContext('2d');
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Particles don't need full retina resolution; this keeps the fill cost low.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const rects = makeRectBatch();
+    const segs = makeLineBatch();
+    const CY = [95, 216, 255];
+    const HOTC = [230, 251, 255];
     const W = window.innerWidth;
     const H = window.innerHeight;
     canvas.width = W * dpr;
@@ -297,20 +303,21 @@ export default function Intro({ sceneReady, onDone }) {
         [...lines, ...rings].forEach((ln) => {
           let prev = null;
           for (let k = 0; k < ln.pts.length; k++) {
-            const q = project(ln.pts[k], ln.fixed, c, rad);
+            const pt = project(ln.pts[k], ln.fixed, c, rad);
             if (prev) {
-              const front = 0.25 + 0.75 * (((prev[2] + q[2]) / 2 + 1) / 2);
+              const front = 0.25 + 0.75 * (((prev[2] + pt[2]) / 2 + 1) / 2);
               let a = ln.a * front * s;
               if (ln.trail) {
                 const f = (k / ln.pts.length * 2 - sec * 0.6 + ln.seed * 3) % 1;
                 a *= 0.35 + 1.4 * Math.pow((f + 1) % 1, 6);
               }
-              g.strokeStyle = `rgba(110,220,255,${Math.min(1, a)})`;
-              g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(q[0], q[1]); g.stroke();
+              const aq = qa(a);
+              if (aq > 0) segs.add(`l${aq}`, rgba([110, 220, 255], aq), prev[0], prev[1], pt[0], pt[1]);
             }
-            prev = q;
+            prev = pt;
           }
         });
+        segs.flush(g, 1);
         const pulse = 1 + 0.1 * Math.sin(sec * 2.4);
         const core = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, rad * 0.55 * pulse);
         core.addColorStop(0, `rgba(240,253,255,${Math.min(1, (0.9 + glowBoost) * s)})`);
@@ -334,8 +341,8 @@ export default function Intro({ sceneReady, onDone }) {
         if (mix < p.delay) {
           // Still text for a split second, flickering cyan as it turns to data.
           const near = Math.random() < mix / Math.max(p.delay, 0.01);
-          g.fillStyle = near ? 'rgba(160,240,255,1)' : 'rgba(230,251,255,0.95)';
-          g.fillRect(p.sx, p.sy, p.px + 0.6, p.px + 0.6);
+          if (near) rects.add('tn', 'rgba(160,240,255,1)', p.sx, p.sy, p.px + 0.6, p.px + 0.6);
+          else rects.add('tt', 'rgba(230,251,255,0.95)', p.sx, p.sy, p.px + 0.6, p.px + 0.6);
           continue;
         }
         // Its path in the data surge (same motion as inside the globe).
@@ -411,9 +418,11 @@ export default function Intro({ sceneReady, onDone }) {
           hot = Math.max(burst * 0.7, wave * kk * 0.8);
         }
         const fade = 1 - ease(kr); // the real globe takes over
-        g.fillStyle = `rgba(${Math.round(95 + 135 * hot)},${Math.round(216 + 35 * hot)},255,${Math.min(1, a * fade)})`;
-        g.fillRect(x - size / 2, y - size / 2, size, size);
+        const cq = mixQ(CY, HOTC, q(hot));
+        const aq = qa(a * fade);
+        if (aq > 0) rects.add(`${cq}|${aq}`, rgba(cq, aq), x - size / 2, y - size / 2, size, size);
       }
+      rects.flush(g);
 
       // 5. The explosion's flash.
       if (kx > 0 && kx < 1) {

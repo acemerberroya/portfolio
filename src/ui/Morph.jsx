@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { MORPH } from '../morph.js';
 import { hubScreen } from '../scene/bridge.js';
 import { getState, subscribe } from '../store.js';
+import { makeLineBatch, makeRectBatch, mixQ, q, qa, rgba } from './canvasBatch.js';
 
 // The particle half of the hologram transformation (portfolio globe ⇄
 // Euthenics core). First the information panel breaks into data particles
@@ -19,7 +20,6 @@ const COLORS = {
 };
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const span = (t, [a, b]) => Math.min(1, Math.max(0, (t - a) / (b - a)));
-const mixRGB = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
 
 // Unit-sphere structure shared by both holograms: grid, shell trails, rings.
 function buildStructure() {
@@ -122,13 +122,16 @@ export default function Morph({ lite }) {
     let parts = null;
     let lines = null;
     let panelParts = [];
+    const rects = makeRectBatch();
+    const segs = makeLineBatch();
 
     const pitch = 0.18;
     const cp = Math.cos(pitch);
     const sp = Math.sin(pitch);
 
     const setup = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Additive particles don't need full retina resolution; this keeps fill cost low.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -178,11 +181,12 @@ export default function Morph({ lite }) {
           const y = hub.y + ry * (1 - e);
           const flick = local < 0.08 ? 0.6 + 0.4 * Math.random() : 1;
           const hot = Math.max(1 - local * 4, e);
-          const c = mixRGB(from.base, from.hot, Math.min(1, hot));
+          const c = mixQ(from.base, from.hot, q(hot));
           const size = (p.text ? 1.6 : 1.3) * (1 - 0.6 * e) + 0.5;
-          g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.85 * flick * (1 - e * 0.5)})`;
-          g.fillRect(x - size / 2, y - size / 2, size, size);
+          const aq = qa(0.85 * flick * (1 - e * 0.5));
+          rects.add(`${c}|${aq}`, rgba(c, aq), x - size / 2, y - size / 2, size, size);
         }
+        rects.flush(g);
         if (a >= 1 && m.phase !== 'accel') panelParts = [];
       }
       if (m.phase === 'accel' || !m.burstStart) { raf = requestAnimationFrame(frame); return; }
@@ -231,20 +235,21 @@ export default function Morph({ lite }) {
         lines.forEach((ln) => {
           let prev = null;
           for (let k = 0; k < ln.pts.length; k++) {
-            const q = project(ln.pts[k], ln.fixed, r);
+            const pt = project(ln.pts[k], ln.fixed, r);
             if (prev) {
-              const front = 0.25 + 0.75 * (((prev[2] + q[2]) / 2 + 1) / 2);
+              const front = 0.25 + 0.75 * (((prev[2] + pt[2]) / 2 + 1) / 2);
               let a = ln.a * front * s;
               if (ln.trail) {
                 const f = (((k / ln.pts.length) * 2 - sec * 0.6 + ln.seed * 3) % 1 + 1) % 1;
                 a *= 0.35 + 1.4 * Math.pow(f, 6);
               }
-              g.strokeStyle = `rgba(${lr},${lg},${lb},${Math.min(1, a)})`;
-              g.beginPath(); g.moveTo(prev[0], prev[1]); g.lineTo(q[0], q[1]); g.stroke();
+              const aq = qa(a);
+              if (aq > 0) segs.add(`${lr},${lg},${lb}|${aq}`, rgba(col.line, aq), prev[0], prev[1], pt[0], pt[1]);
             }
-            prev = q;
+            prev = pt;
           }
         });
+        segs.flush(g, 1);
         const core = g.createRadialGradient(hub.x, hub.y, 0, hub.x, hub.y, r * 0.5);
         core.addColorStop(0, `rgba(${col.hot.join(',')},${Math.min(1, (0.85 + boost) * s)})`);
         core.addColorStop(0.15, `rgba(${cr},${cg},${cb},${Math.min(1, (0.4 + boost) * s)})`);
@@ -303,15 +308,15 @@ export default function Morph({ lite }) {
           depth = 0.35 + 0.65 * ((tz + 1) / 2);
         }
         const burst = kx * (1 - kg);
-        const col = mixRGB(from.base, to.base, kcol);
-        const hotCol = mixRGB(from.hot, to.hot, kcol);
         const hot = Math.max(burst * 0.6, wave * 0.8, kc * (1 - kx) * 0.6);
-        const c = mixRGB(col, hotCol, hot);
+        const kq = q(kcol);
+        const c = mixQ(mixQ(from.base, to.base, kq), mixQ(from.hot, to.hot, kq), q(hot));
         const a = (0.45 + 0.4 * burst + 0.3 * wave) * (p.set ? 0.6 + 0.4 * depth * (kg > 0 ? 1 : 0.6) : depth) * fade;
         const size = 1.1 + 1.6 * burst + 1.3 * wave;
-        g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${Math.min(1, a)})`;
-        g.fillRect(x - size / 2, y - size / 2, size, size);
+        const aq = qa(a);
+        if (aq > 0) rects.add(`${c}|${aq}`, rgba(c, aq), x - size / 2, y - size / 2, size, size);
       }
+      rects.flush(g);
 
       // 4. The explosion's flash.
       if (kx > 0 && kx < 1) {
