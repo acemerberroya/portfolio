@@ -473,6 +473,50 @@ a.contact-value { color: var(--cyan); }
   .eu-totals li { grid-template-columns: 80px 1fr 40px; }
 }
 
+/* ---------- Intro (3D view) ----------
+   Black → holo screen types the name → particles (drawn on the canvas) →
+   the black veil lifts as the ball lands on the globe (--veil 1 → 0). */
+.intro { position: fixed; inset: 0; z-index: 60; --veil: 1; background: rgba(0, 0, 0, var(--veil)); cursor: pointer; }
+.intro-screen {
+  position: absolute; left: 50%; top: 50%; width: min(820px, 88vw); transform: translate(-50%, -50%);
+  display: grid; gap: 14px; justify-items: center; text-align: center; padding: 44px 28px;
+  border: 1px solid rgba(110, 215, 255, 0.45); border-radius: 14px;
+  background:
+    repeating-linear-gradient(180deg, rgba(110, 215, 255, 0.05) 0 1px, transparent 1px 4px),
+    radial-gradient(120% 90% at 50% 50%, rgba(40, 140, 200, 0.16), rgba(0, 0, 0, 0) 70%);
+  box-shadow: 0 0 0 1px rgba(95, 216, 255, 0.12), 0 0 60px rgba(60, 170, 230, 0.22), inset 0 0 40px rgba(60, 170, 230, 0.1);
+  opacity: 0; transition: opacity 0.35s ease;
+}
+.intro-type .intro-screen { opacity: 1; animation: intro-on 0.45s ease-out both; }
+@keyframes intro-on {
+  0% { transform: translate(-50%, -50%) scaleY(0.02); filter: brightness(2.5); }
+  60% { transform: translate(-50%, -50%) scaleY(1.04); }
+  100% { transform: translate(-50%, -50%); filter: none; }
+}
+/* The letters become particles: the screen's text vanishes and its frame collapses. */
+.intro-particles .intro-screen { opacity: 0; transform: translate(-50%, -50%) scale(0.2); transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.5, 0, 0.8, 0.4); }
+.intro-particles .intro-name, .intro-particles .intro-line { visibility: hidden; }
+.intro-name {
+  min-height: 1.2em; font-size: clamp(2.2rem, 1rem + 5vw, 5rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15;
+  color: #e6fbff; text-shadow: 0 0 18px rgba(95, 216, 255, 0.75), 0 0 2px #fff;
+}
+.intro-line {
+  min-height: 1.5em; font-size: clamp(1rem, 0.8rem + 1vw, 1.4rem); font-weight: 600; letter-spacing: 0.02em;
+  color: #6fdcff; text-shadow: 0 0 12px rgba(95, 216, 255, 0.6);
+}
+.intro-chevron { opacity: 0.7; }
+.intro-caret {
+  display: inline-block; width: 0.5em; height: 0.95em; margin-left: 4px; vertical-align: -0.1em;
+  background: #6fdcff; box-shadow: 0 0 10px #6fdcff; animation: blink 0.9s steps(2) infinite;
+}
+.intro-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.intro-skip {
+  position: absolute; right: 24px; bottom: 24px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  color: #cdeffd; background: rgba(5, 12, 20, 0.6); border: 1px solid rgba(110, 215, 255, 0.4); border-radius: 999px; padding: 8px 14px;
+  opacity: calc(0.4 + 0.6 * var(--veil));
+}
+.intro-skip:hover { background: rgba(95, 216, 255, 0.15); }
+
 /* ---------- Page view (also the no-WebGL fallback) ---------- */
 .is-page { background: radial-gradient(circle at 50% 0%, rgba(80, 200, 255, 0.12), transparent 50%); min-height: 100vh; }
 .page-view { max-width: 860px; margin: 0 auto; padding: calc(var(--header-h) + 32px) 20px 60px; display: grid; gap: 56px; }

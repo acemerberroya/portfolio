@@ -17,6 +17,7 @@ let state = {
   warp: null, // door transition phase: 'out' (leaving a room), 'in' (arriving), or null
   warpTo: null, // the room the door transition is heading to (colours the overlay)
   doorHover: false, // pointer is on a door: lights it and its label
+  intro: false, // the opening sequence is playing (keyboard shortcuts wait)
 };
 
 export const getState = () => state;

@@ -3,6 +3,7 @@ import Header from './ui/Header.jsx';
 import Panel from './ui/Panel.jsx';
 import PageView from './ui/PageView.jsx';
 import Warp from './ui/Warp.jsx';
+import Intro from './ui/Intro.jsx';
 import useEnv, { useRemembered } from './hooks/useEnv.js';
 import { ALL_IDS, ROOMS, roomOf } from './rooms.js';
 import { getState, setState, useStore } from './store.js';
@@ -33,6 +34,8 @@ export default function App() {
   const room = useStore((s) => s.room);
   const focusHeading = useRef(false);
   const [sceneReady, setSceneReady] = useState(false);
+  // The intro plays once per page load in the 3D view (not with reduced motion).
+  const [showIntro, setShowIntro] = useState(() => use3D && !env.reduced);
   const timers = useRef([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -117,7 +120,7 @@ export default function App() {
     const onKey = (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
       const s = getState();
-      if (s.warp) return;
+      if (s.warp || s.intro) return;
       const r = ROOMS[s.room];
       const ids = r.all.map((x) => x.id);
       const i = ids.indexOf(s.section);
@@ -158,6 +161,7 @@ export default function App() {
           </p>
           <Panel section={section} room={room} go={go} switchRoom={switchRoom} focusHeading={focusHeading} />
           <Warp />
+          {showIntro && <Intro sceneReady={sceneReady} onDone={() => setShowIntro(false)} />}
         </>
       ) : (
         <PageView

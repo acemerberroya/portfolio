@@ -8,13 +8,15 @@ import Hologram, { GOLD } from './Hologram.jsx';
 import Door, { DOOR } from './Door.jsx';
 import HoloPaper from './HoloPaper.jsx';
 import Satellites from './Satellites.jsx';
-import { CYAN, GLOBE_Y, damp } from './geo.js';
+import { CYAN, GLOBE_R, GLOBE_Y, damp } from './geo.js';
 import { beamFragment, beamVertex } from './shaders.js';
 import { getState, subscribe, useStore } from '../store.js';
 import { ROOMS, isRoomHome } from '../rooms.js';
+import { hubScreen } from './bridge.js';
 
 const CAM = { x: 0, y: 0.9, z: 7.4, fov: 42 };
 const DOOR_V = new THREE.Vector3(DOOR.x, DOOR.y, DOOR.z);
+const HUB_V = new THREE.Vector3();
 
 // Keeps the globe centred in whatever the panel leaves visible, and shrinks the
 // hub to fit narrow screens. Adds a little pointer parallax when motion is allowed.
@@ -70,6 +72,14 @@ function Rig({ hub, reduced }) {
     camera.position.set(CAM.x + c.px + DOOR.x * fwd * 0.35, CAM.y + c.py - fwd * 0.5, CAM.z - dz);
     look.set(0, 0.15, 0).lerp(DOOR_V, fwd * 0.75);
     camera.lookAt(look);
+
+    // Tell the intro where the globe is on screen (it lands its ball there).
+    camera.updateMatrixWorld();
+    HUB_V.set(0, GLOBE_Y, 0).project(camera);
+    hubScreen.x = (HUB_V.x * 0.5 + 0.5) * w;
+    hubScreen.y = (-HUB_V.y * 0.5 + 0.5) * h;
+    hubScreen.r = ppu * GLOBE_R * c.s;
+    hubScreen.ready = true;
   });
   return null;
 }
