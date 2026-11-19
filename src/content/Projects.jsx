@@ -82,7 +82,7 @@ function ProjectCard({ p }) {
         <ul className="tags tags-quiet" aria-label="Tech stack">{p.techStack.map((t) => <li key={t}>{t}</li>)}</ul>
       )}
       <CaseStudy cs={p.caseStudy} />
-      {(p.url || p.demoUrl || p.repoUrl) && (
+      {(p.url || p.demoUrl) && (
         <div className="actions">
           {p.url && (
             <a className="button button-primary" href={p.url} target="_blank" rel="noopener noreferrer">
@@ -92,11 +92,6 @@ function ProjectCard({ p }) {
           {p.demoUrl && (
             <a className="button button-primary" href={p.demoUrl} target="_blank" rel="noopener noreferrer">
               Play the demo<span className="visually-hidden"> (opens in a new tab)</span>
-            </a>
-          )}
-          {p.repoUrl && (
-            <a className="button button-ghost" href={p.repoUrl} target="_blank" rel="noopener noreferrer">
-              Source code<span className="visually-hidden"> (opens in a new tab)</span>
             </a>
           )}
         </div>

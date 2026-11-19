@@ -5,7 +5,6 @@ const skillCount = skillGroups.reduce((n, g) => n + g.items.length, 0);
 // Same highlight cards as the original home slide.
 const KPIS = [
   { label: 'Freelancing since', value: '2024', note: 'Sites, inventory tools and database-backed apps', target: 'experience' },
-  { label: 'Manual inventory errors', value: '−40%', note: 'Smart Inventory Management System', target: 'project', accent: true },
   { label: 'Skills across 3 areas', value: String(skillCount), note: 'Spanning languages, frameworks, cloud and data', target: 'skills' },
   { label: 'Projects', value: String(allProjects.length), note: 'Campus, inventory, restaurant, commuting and game projects', target: 'project' },
 ];

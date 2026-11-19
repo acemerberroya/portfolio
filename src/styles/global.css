@@ -177,6 +177,8 @@ li.item:not(.card) { border-radius: 8px; }
 .button-ghost { border-color: var(--line-strong); color: var(--ink); }
 .button-ghost:hover { background: var(--cyan-soft); }
 .kpis { list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* An odd last card fills its row instead of leaving a gap. */
+.kpis li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .kpi {
   display: grid; gap: 2px; height: 100%; padding: 12px 14px; border-radius: 14px; text-decoration: none; color: var(--ink);
   background: var(--card); border: 1px solid var(--line); transition: border-color 0.2s, background 0.2s;

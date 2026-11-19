@@ -221,7 +221,6 @@ export const addedProjects = [
     role: 'Developer',
     url: 'https://sassystrands.vercel.app',
     host: 'sassystrands.vercel.app',
-    repoUrl: 'https://github.com/barceeee/sassystrands',
     image: '/projects/cover-sassy-strands.jpg',
     imageAlt: 'Sassy Strands Inventory & Production Tracker',
     description:
@@ -265,7 +264,6 @@ export const addedProjects = [
     badge: 'Playable',
     role: 'Developer',
     demoUrl: '/demos/pagpag/',
-    repoUrl: 'https://github.com/barceeee/PagpagTheHungerGames',
     image: '/projects/cover-pagpag.jpg',
     imageAlt: 'Pagpag: The Hunger Games cover art',
     description:
