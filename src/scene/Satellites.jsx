@@ -10,7 +10,7 @@ const R = GLOBE_R * 1.32;
 const wp = new THREE.Vector3();
 const cp = new THREE.Vector3();
 
-function Satellite({ item, angle }) {
+function Satellite({ item, angle, palette }) {
   const mesh = useRef();
   const label = useRef();
   const last = useRef(-1);
@@ -58,7 +58,7 @@ function Satellite({ item, angle }) {
     <group position={[R * Math.sin(angle), 0, R * Math.cos(angle)]}>
       <mesh ref={mesh}>
         <octahedronGeometry args={[0.075, 0]} />
-        <meshBasicMaterial color={selected ? AMBER : CYAN} toneMapped={false} wireframe={!lit} />
+        <meshBasicMaterial color={selected ? palette.active : palette.base} toneMapped={false} wireframe={!lit} />
       </mesh>
       {/* Fixed-size hit area: the visible shard grows when lit, this doesn't. */}
       <mesh onPointerOver={enter} onPointerOut={leave} onClick={pick}>
@@ -83,9 +83,12 @@ function Satellite({ item, angle }) {
 
 // Each open section's items orbit the globe. Picking one highlights it in the
 // panel; hovering an item in the panel swings its satellite to the front.
-export default function Satellites({ reduced }) {
+// `itemsFor` and `palette` default to the main room; the Euthenics hologram
+// passes its own.
+const MAIN_PALETTE = { base: CYAN, active: AMBER };
+export default function Satellites({ reduced, itemsFor = satellitesFor, palette = MAIN_PALETTE }) {
   const section = useStore((s) => s.section);
-  const items = useMemo(() => satellitesFor(section), [section]);
+  const items = useMemo(() => itemsFor(section), [section, itemsFor]);
   const ring = useRef();
   const st = useRef({ angle: 0, appear: 1 });
 
@@ -114,11 +117,11 @@ export default function Satellites({ reduced }) {
     <group rotation={[0.3, 0, -0.1]}>
       <group ref={ring}>
         {items.map((it, i) => (
-          <Satellite key={`${section}-${it.id}`} item={it} angle={(i / items.length) * Math.PI * 2} />
+          <Satellite key={`${section}-${it.id}`} item={it} palette={palette} angle={(i / items.length) * Math.PI * 2} />
         ))}
         <mesh rotation-x={Math.PI / 2}>
           <torusGeometry args={[R, 0.004, 6, 200]} />
-          <meshBasicMaterial color={CYAN} transparent opacity={0.3} toneMapped={false} />
+          <meshBasicMaterial color={palette.base} transparent opacity={0.3} toneMapped={false} />
         </mesh>
       </group>
     </group>

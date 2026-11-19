@@ -46,6 +46,25 @@ All text lives in **`src/data/profile.js`**.
 | Scan sweep | Runs across the globe on every navigation. |
 | Keyboard | Tab through the nav; ← / → move between sections; Esc returns home. |
 
+## Euthenics room
+
+A glowing door on the back wall (left of the globe) leads to a second room that presents my
+Euthenics 2 HTE evaluation (Requirement 4, Section 6) as a Jarvis-style gold hologram. It works
+exactly like the globe: beacons open sections, the open section's items orbit as satellites,
+the hologram turns to face the open section with a scan sweep, and the same panel shows the
+content. Esc, the panel's × and the step links behave the same way.
+
+| Way in or out | |
+| --- | --- |
+| Door | Click it in either room (hover lights it and shows where it leads). |
+| Header | **Euthenics** / **← Main room** button (inside the nav row on phones). |
+| Keyboard | Esc on the Euthenics overview returns to the main room. |
+| Panel | "Euthenics room →" after Contact; "← Main room" on the Euthenics overview. |
+
+**Edit the content in `src/data/euthenics.js`.** Section names, beacon positions and
+satellites are in `src/sectionsEuthenics.js`; `src/rooms.js` ties the two rooms together.
+In Page view the Euthenics sections follow the main portfolio.
+
 ## Performance and fallbacks
 
 - The scene is a separate chunk loaded after the content paints. three.js has its own chunk.

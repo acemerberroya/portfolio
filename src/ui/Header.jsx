@@ -1,18 +1,25 @@
-import { ALL } from '../sections.js';
+import { ROOMS } from '../rooms.js';
 import { setState, useStore } from '../store.js';
 
-export default function Header({ section, go, mode, setMode, webgl }) {
+export default function Header({ section, go, mode, setMode, webgl, room = 'main', use3D = false, switchRoom }) {
   // Hovering a beacon on the globe lights its nav link, and the other way round.
   const glow = useStore((s) => s.hoverSection);
+  const sections = ROOMS[room].all;
+  const inEuthenics = room === 'euthenics';
+  const toggleRoom = () => {
+    if (!use3D) { go(ROOMS.euthenics.homeId); return; }
+    switchRoom(inEuthenics ? 'main' : 'euthenics', undefined, { fromKeyboard: true });
+  };
+  const roomLabel = inEuthenics ? '← Main room' : 'Euthenics';
   return (
     <header className="site-header">
       <a className="brand" href="#top" onClick={(e) => { e.preventDefault(); go('top'); }}>
         <span className="brand-mark" aria-hidden="true">AB</span>
         <span className="brand-name">Acemer Berroya</span>
       </a>
-      <nav className="nav" aria-label="Sections">
+      <nav className="nav" aria-label={inEuthenics ? 'Euthenics sections' : 'Sections'}>
         <ul>
-          {ALL.map((s) => (
+          {sections.map((s) => (
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
@@ -26,8 +33,20 @@ export default function Header({ section, go, mode, setMode, webgl }) {
               </a>
             </li>
           ))}
+          {/* On small screens the room switch rides in the nav row instead of the header row. */}
+          <li className="nav-room">
+            <button type="button" onClick={toggleRoom}>{roomLabel}</button>
+          </li>
         </ul>
       </nav>
+      {/* The keyboard path through the door (the 3D door is a mouse/touch shortcut). */}
+      <button
+        type="button"
+        className="view-toggle room-toggle"
+        onClick={toggleRoom}
+      >
+        {roomLabel}
+      </button>
       {webgl && (
         <button
           type="button"

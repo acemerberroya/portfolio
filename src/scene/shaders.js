@@ -114,3 +114,74 @@ export const ledFragment = /* glsl */ `
     gl_FragColor = vec4(col, smoothstep(0.5, 0.0, d) * mix(0.12, 1.0, vOn));
   }
 `;
+
+// Jarvis hologram light trails (Euthenics room). Each strand carries a bright
+// comet head that flows along it, dims on the far side, joins the same scan
+// sweep the globe's dots use, and only appears once the staged reveal reaches
+// its seed.
+export const trailVertex = /* glsl */ `
+  attribute float aT;
+  attribute float aSeed;
+  uniform float uTime;
+  uniform float uScan;
+  uniform float uCenterY;
+  uniform float uReveal;
+  varying float vGlow;
+  varying float vScan;
+  varying float vFront;
+  varying float vShow;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec3 wp = (modelMatrix * vec4(position, 1.0)).xyz;
+    vec3 n = normalize(normalMatrix * normalize(position + vec3(1e-4)));
+    vFront = smoothstep(-0.4, 0.5, dot(n, normalize(-mv.xyz)));
+    vScan = 1.0 - smoothstep(0.0, 0.16, abs(wp.y - uCenterY - uScan));
+    float f = fract(aT * 2.0 - uTime * (0.1 + aSeed * 0.28) + aSeed * 11.0);
+    vGlow = pow(f, 6.0);
+    vShow = step(aSeed, uReveal);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+export const trailFragment = /* glsl */ `
+  uniform vec3 uColor;
+  uniform vec3 uHot;
+  uniform float uFlicker;
+  varying float vGlow;
+  varying float vScan;
+  varying float vFront;
+  varying float vShow;
+  void main() {
+    if (vShow < 0.5) discard;
+    vec3 col = mix(uColor, uHot, clamp(vGlow * 0.9 + vScan * 0.8, 0.0, 1.0));
+    float a = (0.38 + 0.62 * vGlow) * mix(0.2, 1.0, vFront) + vScan * 0.6;
+    gl_FragColor = vec4(col, a * uFlicker);
+  }
+`;
+
+// Door portal: a swirling sheet of light with scan lines; brightens on hover.
+export const portalVertex = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+export const portalFragment = /* glsl */ `
+  uniform float uTime;
+  uniform float uHover;
+  uniform vec3 uColor;
+  uniform vec3 uEdge;
+  varying vec2 vUv;
+  void main() {
+    vec2 p = (vUv - 0.5) * vec2(1.0, 2.1);
+    float r = length(p);
+    float ang = atan(p.y, p.x);
+    float swirl = 0.5 + 0.5 * sin(ang * 5.0 + r * 16.0 - uTime * 1.5);
+    float lines = 0.78 + 0.22 * sin(vUv.y * 140.0 - uTime * 5.0);
+    float core = smoothstep(1.05, 0.0, r);
+    float rim = smoothstep(0.38, 0.5, max(abs(vUv.x - 0.5), abs(vUv.y - 0.5)));
+    vec3 col = mix(uEdge, uColor, core);
+    float a = (0.12 + 0.3 * swirl * core + 0.35 * uHover * core + 0.35 * rim) * lines;
+    gl_FragColor = vec4(col, a);
+  }
+`;

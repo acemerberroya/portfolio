@@ -2,17 +2,22 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import Header from './ui/Header.jsx';
 import Panel from './ui/Panel.jsx';
 import PageView from './ui/PageView.jsx';
+import Warp from './ui/Warp.jsx';
 import useEnv, { useRemembered } from './hooks/useEnv.js';
-import { ALL } from './sections.js';
+import { ALL_IDS, ROOMS, roomOf } from './rooms.js';
 import { getState, setState, useStore } from './store.js';
 
 // three.js and the scene load in their own chunk, after the content has painted.
 const Scene = lazy(() => import('./scene/Scene.jsx'));
 
-const IDS = ALL.map((s) => s.id);
+// Door transition timing: the camera dollies into the door while the screen
+// fills with light (OUT), the room swaps, then the new room fades in (IN).
+const OUT_MS = 650;
+const IN_MS = 750;
+
 const fromHash = () => {
   const h = window.location.hash.replace('#', '');
-  return IDS.includes(h) ? h : 'top';
+  return ALL_IDS.includes(h) ? h : 'top';
 };
 
 function isTyping(el) {
@@ -25,13 +30,43 @@ export default function App() {
   const [mode, setMode] = useRemembered('view-mode', '3d');
   const use3D = env.webgl && mode === '3d';
   const section = useStore((s) => s.section);
+  const room = useStore((s) => s.room);
   const focusHeading = useRef(false);
   const [sceneReady, setSceneReady] = useState(false);
+  const timers = useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // Navigate to a section (and optionally select one item in it).
+  // Walk through the door to another room, landing on `target` (its home by default).
+  const switchRoom = useCallback(
+    (to, target = ROOMS[to]?.homeId, { fromKeyboard = false } = {}) => {
+      const s = getState();
+      if (!ROOMS[to] || s.warp) return;
+      const arrive = () => {
+        focusHeading.current = fromKeyboard;
+        setState((st) => ({
+          room: to, section: target, focus: null, hover: null, hoverSection: null, pinHover: null,
+          warp: env.reduced ? null : 'in', pulse: st.pulse + 1,
+        }));
+        history.replaceState(null, '', target === 'top' ? window.location.pathname : `#${target}`);
+        if (!env.reduced) timers.current.push(setTimeout(() => setState({ warp: null }), IN_MS));
+      };
+      document.body.style.cursor = '';
+      if (env.reduced || s.room === to) { arrive(); return; }
+      setState({ warp: 'out', warpTo: to, hover: null, hoverSection: null, pinHover: null, doorHover: false });
+      timers.current.push(setTimeout(arrive, OUT_MS));
+    },
+    [env.reduced]
+  );
+
+  // Navigate to a section (and optionally select one item in it). A section in
+  // the other room goes through the door first.
   const go = useCallback(
     (id, focus = null, { fromKeyboard = true } = {}) => {
-      if (!IDS.includes(id)) return;
+      if (!ALL_IDS.includes(id)) return;
+      if (use3D && roomOf(id) !== getState().room) {
+        switchRoom(roomOf(id), id, { fromKeyboard });
+        return;
+      }
       focusHeading.current = fromKeyboard;
       setState((s) => ({ section: id, focus, hover: null, pulse: s.pulse + 1 }));
       history.replaceState(null, '', id === 'top' ? window.location.pathname : `#${id}`);
@@ -42,58 +77,87 @@ export default function App() {
         el?.querySelector('h1, h2')?.focus({ preventScroll: true });
       }
     },
-    [use3D]
+    [use3D, switchRoom]
   );
 
-  // Every visit opens on Home (an old #section link is cleared), then
-  // back/forward and edited hashes still work.
+  // Every visit opens on Home in the main room (an old #section link is
+  // cleared), then back/forward and edited hashes still work.
+  const latest = useRef({ use3D, switchRoom });
+  latest.current = { use3D, switchRoom };
   useEffect(() => {
-    setState({ section: 'top' });
+    setState({ section: 'top', room: 'main' });
     if (window.location.hash) history.replaceState(null, '', window.location.pathname);
     window.scrollTo(0, 0);
-    const onHash = () => setState((s) => ({ section: fromHash(), pulse: s.pulse + 1 }));
+    const onHash = () => {
+      const id = fromHash();
+      const to = roomOf(id);
+      if (latest.current.use3D && to !== getState().room) latest.current.switchRoom(to, id);
+      else setState((s) => ({ section: id, pulse: s.pulse + 1 }));
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // When switching to page view, land on the section that was open.
+  // When switching to page view, land on the section that was open. When
+  // switching back to 3D, open the room that section lives in.
   useEffect(() => {
-    if (use3D) return;
     const id = getState().section;
+    if (use3D) {
+      const to = roomOf(id);
+      if (to && to !== getState().room) setState({ room: to });
+      return;
+    }
     if (id !== 'top') requestAnimationFrame(() => document.getElementById(`sec-${id}`)?.scrollIntoView());
   }, [use3D]);
 
-  // Keyboard: ← → move between sections, Esc goes home (3D view only).
+  // Keyboard: ← → move between the room's sections, Esc goes to the room's
+  // home, and from the Euthenics overview Esc goes back to the main room.
   useEffect(() => {
     if (!use3D) return undefined;
     const onKey = (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
-      const i = IDS.indexOf(getState().section);
-      if (e.key === 'ArrowRight' && i < IDS.length - 1) { e.preventDefault(); go(IDS[i + 1]); }
-      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); go(IDS[i - 1]); }
-      else if (e.key === 'Escape' && i > 0) { e.preventDefault(); go('top'); }
+      const s = getState();
+      if (s.warp) return;
+      const r = ROOMS[s.room];
+      const ids = r.all.map((x) => x.id);
+      const i = ids.indexOf(s.section);
+      if (e.key === 'ArrowRight' && i < ids.length - 1) { e.preventDefault(); go(ids[i + 1]); }
+      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); go(ids[i - 1]); }
+      else if (e.key === 'Escape' && i > 0) { e.preventDefault(); go(r.homeId); }
+      else if (e.key === 'Escape' && s.room !== 'main') { e.preventDefault(); switchRoom('main', undefined, { fromKeyboard: true }); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [use3D, go]);
+  }, [use3D, go, switchRoom]);
 
   return (
-    <div className={`app ${use3D ? 'is-3d' : 'is-page'} ${sceneReady ? 'scene-ready' : ''}`}>
+    <div className={`app ${use3D ? 'is-3d' : 'is-page'} ${sceneReady ? 'scene-ready' : ''} ${use3D ? `room-${room}` : ''}`}>
       <a className="skip-link" href="#main">Skip to content</a>
-      <Header section={section} go={go} mode={mode} setMode={setMode} webgl={env.webgl} />
+      <Header
+        section={section}
+        go={go}
+        mode={mode}
+        setMode={setMode}
+        webgl={env.webgl}
+        room={use3D ? room : 'main'}
+        use3D={use3D}
+        switchRoom={switchRoom}
+      />
       {use3D ? (
         <>
           <div className="stage" aria-hidden="true">
             <div className="stage-fallback" />
             <Suspense fallback={null}>
-              <Scene env={env} go={go} onReady={() => setSceneReady(true)} />
+              <Scene env={env} go={go} switchRoom={switchRoom} onReady={() => setSceneReady(true)} />
             </Suspense>
           </div>
           <p className="visually-hidden">
-            The background is an interactive holographic globe. Every section is also available from the
-            navigation above and the panel below.
+            {room === 'euthenics'
+              ? 'The background is an interactive holographic projection of my HTE evaluation. Every part is also available from the navigation above and the panel below.'
+              : 'The background is an interactive holographic globe. Every section is also available from the navigation above and the panel below.'}
           </p>
-          <Panel section={section} go={go} focusHeading={focusHeading} />
+          <Panel section={section} room={room} go={go} switchRoom={switchRoom} focusHeading={focusHeading} />
+          <Warp />
         </>
       ) : (
         <PageView

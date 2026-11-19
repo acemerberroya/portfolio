@@ -2,20 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
-import Room from './Room.jsx';
+import Room, { GOLD_THEME } from './Room.jsx';
 import Globe from './Globe.jsx';
+import Hologram, { GOLD } from './Hologram.jsx';
+import Door, { DOOR } from './Door.jsx';
 import Satellites from './Satellites.jsx';
 import { CYAN, GLOBE_Y, damp } from './geo.js';
 import { beamFragment, beamVertex } from './shaders.js';
-import { getState, subscribe } from '../store.js';
+import { getState, subscribe, useStore } from '../store.js';
+import { ROOMS, isRoomHome } from '../rooms.js';
 
 const CAM = { x: 0, y: 0.9, z: 7.4, fov: 42 };
+const DOOR_V = new THREE.Vector3(DOOR.x, DOOR.y, DOOR.z);
 
 // Keeps the globe centred in whatever the panel leaves visible, and shrinks the
 // hub to fit narrow screens. Adds a little pointer parallax when motion is allowed.
 function Rig({ hub, reduced }) {
   const { camera, size } = useThree();
-  const cur = useRef({ x: 0, y: 0, s: 1, px: 0, py: 0, first: true });
+  const cur = useRef({ x: 0, y: 0, s: 1, px: 0, py: 0, first: true, w: 0, warp: null });
+  const look = useMemo(() => new THREE.Vector3(), []);
   const header = useRef(64);
   useEffect(() => {
     header.current = document.querySelector('.site-header')?.offsetHeight || 64;
@@ -39,7 +44,7 @@ function Rig({ hub, reduced }) {
     const ah = h - inset.y - header.current;
     // Fit the globe (about 4.4 units tall with its beacons) into the free space;
     // with a section open, leave room for its orbiting satellites too.
-    const wide = getState().section === 'top' ? 5 : 6.6;
+    const wide = isRoomHome(getState().section) ? 5 : 6.6;
     const ts = THREE.MathUtils.clamp(Math.min(aw / (wide * ppu), ah / (4.6 * ppu)), 0.4, 1);
     c.s += (ts - c.s) * k;
     if (hub.current) hub.current.scale.setScalar(c.s);
@@ -49,20 +54,33 @@ function Rig({ hub, reduced }) {
       c.px += (state.pointer.x * 0.35 - c.px) * damp(2, dt);
       c.py += (state.pointer.y * 0.18 - c.py) * damp(2, dt);
     }
-    camera.position.set(CAM.x + c.px, CAM.y + c.py, CAM.z);
-    camera.lookAt(0, 0.15, 0);
+
+    // Door transition: on 'out' the camera dollies toward the door; when the
+    // new room appears ('in') it starts further back and glides to rest.
+    const { warp } = getState();
+    if (warp !== c.warp) {
+      if (warp === 'in' && !reduced) c.w = -0.9;
+      c.warp = warp;
+    }
+    const wt = warp === 'out' && !reduced ? 1 : 0;
+    c.w += (wt - c.w) * (reduced ? 1 : damp(warp === 'out' ? 2.8 : 2.2, dt));
+    const fwd = Math.max(c.w, 0);
+    const dz = fwd > 0 ? fwd * fwd * 6 : c.w * 2.4;
+    camera.position.set(CAM.x + c.px + DOOR.x * fwd * 0.35, CAM.y + c.py - fwd * 0.5, CAM.z - dz);
+    look.set(0, 0.15, 0).lerp(DOOR_V, fwd * 0.75);
+    camera.lookAt(look);
   });
   return null;
 }
 
-function Beam({ reduced, lite }) {
+function Beam({ reduced, lite, color = CYAN }) {
   const mat = useMemo(
     () => new THREE.ShaderMaterial({
       vertexShader: beamVertex, fragmentShader: beamFragment,
-      uniforms: { uColor: { value: new THREE.Color(CYAN) }, uTime: { value: 0 } },
+      uniforms: { uColor: { value: new THREE.Color(color) }, uTime: { value: 0 } },
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     }),
-    []
+    [color]
   );
   useFrame((s) => { if (!reduced) mat.uniforms.uTime.value = s.clock.elapsedTime; });
   const bottom = -2.17;
@@ -84,10 +102,12 @@ function Invalidator({ reduced }) {
   return null;
 }
 
-export default function Scene({ env, go, onReady }) {
+export default function Scene({ env, go, switchRoom, onReady }) {
   const lite = env.tier === 'lite';
   const { reduced } = env;
   const hub = useRef();
+  const room = useStore((s) => s.room);
+  const eu = ROOMS.euthenics;
   const [dpr, setDpr] = useState(lite ? 1 : 1.5);
 
   return (
@@ -106,12 +126,42 @@ export default function Scene({ env, go, onReady }) {
       <PerformanceMonitor flipflops={2} onDecline={() => setDpr(1)} onFallback={() => setDpr(1)} />
       <Invalidator reduced={reduced} />
       <Rig hub={hub} reduced={reduced} />
-      <Room lite={lite} reduced={reduced} />
-      <group ref={hub} position={[0, GLOBE_Y, 0]}>
-        <Globe lite={lite} reduced={reduced} go={go} />
-        <Satellites reduced={reduced} />
-      </group>
-      <Beam reduced={reduced} lite={lite} />
+      {room === 'euthenics' ? (
+        // The Euthenics room: same room, gold-lit, with the Jarvis hologram as its hub.
+        <>
+          <Room lite={lite} reduced={reduced} theme={GOLD_THEME} />
+          <Door
+            label="Main room"
+            hint="Back to the holo globe"
+            frame={GOLD}
+            portal={CYAN}
+            reduced={reduced}
+            onEnter={() => switchRoom('main')}
+          />
+          <group ref={hub} position={[0, GLOBE_Y, 0]}>
+            <Hologram lite={lite} reduced={reduced} go={go} />
+            <Satellites reduced={reduced} itemsFor={eu.satellitesFor} palette={eu.palette} />
+          </group>
+          <Beam reduced={reduced} lite={lite} color={GOLD} />
+        </>
+      ) : (
+        <>
+          <Room lite={lite} reduced={reduced} />
+          <Door
+            label="Euthenics"
+            hint="Enter the HTE evaluation room"
+            frame="#3fb6e8"
+            portal={GOLD}
+            reduced={reduced}
+            onEnter={() => switchRoom('euthenics')}
+          />
+          <group ref={hub} position={[0, GLOBE_Y, 0]}>
+            <Globe lite={lite} reduced={reduced} go={go} />
+            <Satellites reduced={reduced} />
+          </group>
+          <Beam reduced={reduced} lite={lite} />
+        </>
+      )}
     </Canvas>
   );
 }

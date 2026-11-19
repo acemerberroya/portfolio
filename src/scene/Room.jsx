@@ -34,13 +34,13 @@ function panelTexture({ w = 512, h = 512, base, seam, cols = 4, rows = 2, noise 
   return t;
 }
 
-function glowTexture() {
+export function glowTexture(inner = 'rgba(120,220,255,0.9)', mid = 'rgba(60,170,230,0.28)') {
   const c = document.createElement('canvas');
   c.width = c.height = 256;
   const g = c.getContext('2d');
   const r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-  r.addColorStop(0, 'rgba(120,220,255,0.9)');
-  r.addColorStop(0.35, 'rgba(60,170,230,0.28)');
+  r.addColorStop(0, inner);
+  r.addColorStop(0.35, mid);
   r.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = r;
   g.fillRect(0, 0, 256, 256);
@@ -104,10 +104,27 @@ function Racks({ lite }) {
   );
 }
 
-export default function Room({ lite, reduced }) {
+// Colours of everything the hologram lights. The main room keeps its cyan;
+// the Euthenics room passes a gold theme so the same room reads as a sibling.
+export const CYAN_THEME = {
+  light: '#58d0ff',
+  glowInner: 'rgba(120,220,255,0.9)',
+  glowMid: 'rgba(60,170,230,0.28)',
+  ring: '#58d0ff',
+  disc: '#123548',
+};
+export const GOLD_THEME = {
+  light: '#ffb34d',
+  glowInner: 'rgba(255,200,110,0.9)',
+  glowMid: 'rgba(230,140,40,0.28)',
+  ring: '#ffbf5a',
+  disc: '#3a2510',
+};
+
+export default function Room({ lite, reduced, theme = CYAN_THEME, children }) {
   const wallTex = useMemo(() => panelTexture({ base: '#1a222c', seam: '#0e141b', cols: 3, rows: 2, repeat: [4, 2] }), []);
   const floorTex = useMemo(() => panelTexture({ base: '#141a22', seam: '#0a0e13', cols: 4, rows: 4, noise: 10, repeat: [6, 6] }), []);
-  const glow = useMemo(glowTexture, []);
+  const glow = useMemo(() => glowTexture(theme.glowInner, theme.glowMid), [theme]);
   const pillars = useMemo(() => {
     const xs = lite ? [-8, 8] : [-9, -5, 5, 9];
     return xs;
@@ -123,7 +140,7 @@ export default function Room({ lite, reduced }) {
       {/* Soft key light from above and in front */}
       <directionalLight position={[3, 7, 6]} intensity={0.8} color="#fff1dc" />
       {/* The hologram lights the room */}
-      <pointLight position={[0, 0.35, 0]} color="#58d0ff" intensity={38} distance={18} decay={1.6} />
+      <pointLight position={[0, 0.35, 0]} color={theme.light} intensity={38} distance={18} decay={1.6} />
 
       {/* Floor */}
       <mesh rotation-x={-Math.PI / 2} position={[0, FLOOR_Y, 0]}>
@@ -198,15 +215,16 @@ export default function Room({ lite, reduced }) {
         </mesh>
         <mesh position={[0, 1.02, 0]} rotation-x={-Math.PI / 2}>
           <ringGeometry args={[0.6, 0.68, 64]} />
-          <meshBasicMaterial color="#58d0ff" toneMapped={false} />
+          <meshBasicMaterial color={theme.ring} toneMapped={false} />
         </mesh>
         <mesh position={[0, 1.03, 0]} rotation-x={-Math.PI / 2}>
           <circleGeometry args={[0.6, 32]} />
-          <meshBasicMaterial color="#123548" />
+          <meshBasicMaterial color={theme.disc} />
         </mesh>
       </group>
+      {children}
     </group>
   );
 }
 
-export { FLOOR_Y };
+export { FLOOR_Y, BACK_Z };

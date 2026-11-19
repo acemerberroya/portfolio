@@ -1,17 +1,22 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { CONTENT } from '../content/index.js';
-import { ALL } from '../sections.js';
+import { ROOMS } from '../rooms.js';
 import { setState } from '../store.js';
 
 // The readable layer over the 3D scene. It reports the space it covers so the
 // camera can keep the globe centred in the space that's left.
-export default function Panel({ section, go, focusHeading }) {
+// Both rooms use this same panel: it reads the open room's sections and home.
+export default function Panel({ section, room = 'main', go, switchRoom, focusHeading }) {
   const ref = useRef(null);
   const headingRef = useRef(null);
-  const Content = CONTENT[section] || CONTENT.top;
+  const { all: ALL, homeId } = ROOMS[room];
+  const atHome = section === homeId;
+  const Content = CONTENT[section] || CONTENT[homeId];
   const i = ALL.findIndex((s) => s.id === section);
   const prev = ALL[i - 1];
   const next = ALL[i + 1];
+  // At the ends of a room's sequence, the step links lead through the door.
+  const toRoom = (to) => (e) => { e.preventDefault(); switchRoom(to, undefined, { fromKeyboard: true }); };
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -43,21 +48,25 @@ export default function Panel({ section, go, focusHeading }) {
   }, [section, focusHeading]);
 
   return (
-    <div ref={ref} className={`panel ${section === 'top' ? 'panel-home' : 'panel-section'}`} id="main">
-      {section !== 'top' && (
-        <button type="button" className="panel-close" onClick={() => go('top')} aria-label="Close and return home">
+    <div ref={ref} className={`panel ${atHome ? 'panel-home' : 'panel-section'}`} id="main">
+      {!atHome && (
+        <button type="button" className="panel-close" onClick={() => go(homeId)} aria-label="Close and return home">
           <span aria-hidden="true">×</span>
         </button>
       )}
       <div className="panel-body" key={section}>
-        <Content go={go} headingRef={headingRef} level={section === 'top' ? 1 : 2} />
+        <Content go={go} headingRef={headingRef} level={atHome ? 1 : 2} />
       </div>
       <nav className="panel-steps" aria-label="Previous and next section">
         {prev ? (
           <a href={`#${prev.id}`} onClick={(e) => { e.preventDefault(); go(prev.id); }}>← {prev.label}</a>
+        ) : room !== 'main' ? (
+          <a href="#top" onClick={toRoom('main')}>← Main room</a>
         ) : <span />}
-        {next && (
+        {next ? (
           <a href={`#${next.id}`} onClick={(e) => { e.preventDefault(); go(next.id); }}>{next.label} →</a>
+        ) : room === 'main' && (
+          <a href={`#${ROOMS.euthenics.homeId}`} onClick={toRoom('euthenics')}>Euthenics room →</a>
         )}
       </nav>
     </div>

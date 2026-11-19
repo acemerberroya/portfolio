@@ -3,17 +3,18 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import landDots from './landDots.json';
-import { HOME_PIN, SECTIONS } from '../sections.js';
+import { HOME, HOME_PIN, SECTIONS } from '../sections.js';
 import { getState, setState, useStore } from '../store.js';
-import { AMBER, CYAN, GLOBE_R, GLOBE_Y, angleDelta, damp, faceAngles, latLngToVec3 } from './geo.js';
+import { AMBER, CYAN, GLOBE_R, GLOBE_Y, latLngToVec3 } from './geo.js';
 import { dotsFragment, dotsVertex, fresnelFragment, fresnelVertex } from './shaders.js';
+import { useHub } from './hub.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const tmpA = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
 const tmpC = new THREE.Vector3();
 
-function useFresnel(color, power, intensity, invert = 0) {
+export function useFresnel(color, power, intensity, invert = 0) {
   return useMemo(
     () => new THREE.ShaderMaterial({
       vertexShader: fresnelVertex,
@@ -85,7 +86,10 @@ function Graticule() {
   );
 }
 
-function Beacon({ sec, st, go }) {
+// A section's pin on a hub. Shared by the globe and the Euthenics hologram;
+// `palette` colours it, `homePin`/`homeId` say which pin is "home".
+const MAIN_PALETTE = { base: CYAN, active: AMBER };
+export function Beacon({ sec, st, go, homePin = HOME_PIN, homeId = HOME.id, palette = MAIN_PALETTE }) {
   const { camera } = useThree();
   const group = useRef();
   const ring = useRef();
@@ -94,9 +98,9 @@ function Beacon({ sec, st, go }) {
   const last = useRef(-1);
   const active = useStore((s) => s.section === sec.id);
   const hovered = useStore((s) => s.hoverSection === sec.id);
-  const home = useStore((s) => s.section === 'top');
-  const isHome = sec.lat === HOME_PIN.lat && sec.lng === HOME_PIN.lng;
-  const color = active || isHome ? AMBER : CYAN;
+  const home = useStore((s) => s.section === homeId);
+  const isHome = sec.lat === homePin.lat && sec.lng === homePin.lng;
+  const color = active || isHome ? palette.active : palette.base;
 
   const { pos, quat } = useMemo(() => {
     const p = latLngToVec3(sec.lat, sec.lng, GLOBE_R);
@@ -188,7 +192,7 @@ function Beacon({ sec, st, go }) {
         >
           <span className="bl-name">{sec.label}</span>
           <span className="bl-hint">{sec.hint}</span>
-          {isHome && home && <span className="bl-place">Based in {HOME_PIN.label}</span>}
+          {isHome && home && <span className="bl-place">Based in {homePin.label}</span>}
         </div>
       </Html>
     </group>
@@ -196,24 +200,8 @@ function Beacon({ sec, st, go }) {
 }
 
 export default function Globe({ lite, reduced, go }) {
-  const spin = useRef();
   const rings = useRef();
-  const { gl, invalidate } = useThree();
-  const start = useMemo(() => faceAngles(HOME_PIN.lat, HOME_PIN.lng), []);
-  const st = useRef({
-    yaw: reduced ? start.yaw : start.yaw - 1.2,
-    pitch: 0.18,
-    tYaw: start.yaw,
-    tPitch: 0.18,
-    vel: 0,
-    drag: false,
-    moved: 0,
-    x: 0,
-    y: 0,
-    scan: 1,
-    reduced,
-  });
-  st.current.reduced = reduced;
+  const { gl } = useThree();
 
   const uniforms = useMemo(
     () => ({
@@ -227,74 +215,14 @@ export default function Globe({ lite, reduced, go }) {
     [lite, gl]
   );
 
-  const section = useStore((s) => s.section);
-  const pulse = useStore((s) => s.pulse);
-  useEffect(() => {
-    const target = section === 'top' ? HOME_PIN : SECTIONS.find((s) => s.id === section);
-    const a = faceAngles(target.lat, target.lng);
-    st.current.tYaw = a.yaw;
-    st.current.tPitch = section === 'top' ? 0.18 : a.pitch * 0.85;
-    st.current.scan = 0;
-    invalidate();
-  }, [section, pulse, invalidate]);
-
-  // Drag anywhere on the globe to spin it, with a little inertia.
-  useEffect(() => {
-    const move = (e) => {
-      const s = st.current;
-      if (!s.drag) return;
-      const dx = e.clientX - s.x;
-      const dy = e.clientY - s.y;
-      s.x = e.clientX; s.y = e.clientY;
-      s.moved += Math.abs(dx) + Math.abs(dy);
-      s.yaw += dx * 0.006;
-      s.pitch = Math.max(-0.6, Math.min(0.6, s.pitch + dy * 0.004));
-      s.vel = dx * 0.35;
-      s.tYaw = null;
-      invalidate();
-    };
-    const up = () => {
-      if (!st.current.drag) return;
-      st.current.drag = false;
-      document.body.style.cursor = '';
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
-    return () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', up);
-    };
-  }, [invalidate]);
+  // Facing, scan sweep, spin and drag are shared with the Euthenics hologram.
+  const { spin, st, bind } = useHub({ sections: SECTIONS, homePin: HOME_PIN, homeId: HOME.id, reduced, uniforms });
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05);
-    const s = st.current;
-    const g = getState();
-    const frozen = g.pinHover || (g.hover && g.hoverFrom === 'scene');
-    if (!s.drag && !frozen) {
-      if (s.tYaw != null) {
-        const k = reduced ? 1 : damp(2.4, dt);
-        s.yaw += angleDelta(s.yaw, s.tYaw) * k;
-        s.pitch += (s.tPitch - s.pitch) * k;
-        if (Math.abs(angleDelta(s.yaw, s.tYaw)) < 0.003) s.tYaw = null; // face the section, then keep spinning
-      } else {
-        s.yaw += s.vel * dt * (reduced ? 0 : 1);
-        s.vel *= Math.exp(-2.5 * dt);
-        if (!reduced) s.yaw += 0.14 * dt; // always spinning; pauses while a pin is hovered or the globe is dragged
-      }
-    }
-    if (spin.current) spin.current.rotation.set(s.pitch, s.yaw, 0);
     if (rings.current && !reduced) {
       rings.current.children[0].rotation.z += dt * 0.15;
       rings.current.children[1].rotation.z -= dt * 0.1;
-    }
-    if (!reduced && s.scan < 1) {
-      s.scan = Math.min(1, s.scan + dt / 1.1);
-      uniforms.uScan.value = 1.9 - s.scan * 3.8;
-    } else {
-      uniforms.uScan.value = 9;
     }
   });
 
@@ -304,15 +232,7 @@ export default function Globe({ lite, reduced, go }) {
   return (
     <group>
       <group ref={spin}>
-        <mesh
-          onPointerDown={(e) => {
-            const s = st.current;
-            s.drag = true; s.moved = 0; s.x = e.clientX; s.y = e.clientY; s.vel = 0;
-            document.body.style.cursor = 'grabbing';
-          }}
-          onPointerOver={() => { if (!st.current.drag && !getState().hoverSection) document.body.style.cursor = 'grab'; }}
-          onPointerOut={() => { if (!st.current.drag && !getState().hoverSection) document.body.style.cursor = ''; }}
-        >
+        <mesh {...bind}>
           <sphereGeometry args={[GLOBE_R * 1.01, 24, 24]} />
           <meshBasicMaterial color="#0a3a57" transparent opacity={0.16} depthWrite={false} />
         </mesh>
