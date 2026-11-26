@@ -66,7 +66,7 @@ export default function Panel({ section, room = 'main', go, switchRoom, focusHea
         {next ? (
           <a href={`#${next.id}`} onClick={(e) => { e.preventDefault(); go(next.id); }}>{next.label} →</a>
         ) : room === 'main' && (
-          <a href={`#${ROOMS.euthenics.homeId}`} onClick={toRoom('euthenics')}>Euthenics →</a>
+          <a href={`#${ROOMS.euthenics.homeId}`} onClick={toRoom('euthenics')}>HTE Evaluation →</a>
         )}
       </nav>
     </div>

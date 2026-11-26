@@ -10,14 +10,14 @@ export default function Header({ section, go, mode, setMode, webgl, room = 'main
     if (!use3D) { go(ROOMS.euthenics.homeId); return; }
     switchRoom(inEuthenics ? 'main' : 'euthenics', undefined, { fromKeyboard: true });
   };
-  const roomLabel = inEuthenics ? '← Portfolio' : 'Euthenics';
+  const roomLabel = inEuthenics ? '← Portfolio' : 'HTE Evaluation';
   return (
     <header className="site-header">
       <a className="brand" href="#top" onClick={(e) => { e.preventDefault(); go('top'); }}>
         <span className="brand-mark" aria-hidden="true">AB</span>
         <span className="brand-name">Acemer Berroya</span>
       </a>
-      <nav className="nav" aria-label={inEuthenics ? 'Euthenics sections' : 'Sections'}>
+      <nav className="nav" aria-label={inEuthenics ? 'HTE Evaluation sections' : 'Sections'}>
         <ul>
           {sections.map((s) => (
             <li key={s.id}>

@@ -16,7 +16,7 @@ export const ROOMS = {
   },
   euthenics: {
     id: 'euthenics',
-    label: 'Euthenics',
+    label: 'HTE Evaluation',
     all: EU_ALL,
     sections: EU_SECTIONS,
     homeId: EU_HOME.id,
