@@ -315,7 +315,7 @@ export default function Globe({ lite, reduced, go, switchRoom, active = true }) 
             onPointerLeave={() => { document.body.style.cursor = ''; }}
             aria-hidden="true"
           >
-            <span className="bl-name">Euthenics</span>
+            <span className="bl-name">HTE Evaluation</span>
             <span className="bl-hint">Transform the hologram</span>
           </div>
         </Html>
